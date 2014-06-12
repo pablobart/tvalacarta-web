@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+{% autoescape true %}
+<html>
+  <head>
+  <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+  <link type="text/css" rel="stylesheet" href="/stylesheets/bootstrap.css" />
+  <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
+
+  </head>
+  <body>
+    <div id="content">
+        <h1>Hello {{loggedInUserName}}</h1>
+    </div>
+  </body>
+</html>
+{% endautoescape %}
