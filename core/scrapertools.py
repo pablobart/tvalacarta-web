@@ -62,33 +62,33 @@ def cachePage(url,post=None,headers=[['User-Agent', 'Mozilla/5.0 (Macintosh; U; 
             import sys
             for line in sys.exc_info():
                 logger.error( "%s" % line )
-        
+
         return data
     '''
     # CACHE_NUNCA: Siempre va a la URL a descargar
     # obligatorio para peticiones POST
     if modoCache == CACHE_NUNCA or post is not None:
         logger.info("[scrapertools.py] MODO_CACHE=2 (no cachear)")
-        
+
         try:
             data = downloadpage(url,post,headers, timeout=timeout)
         except:
             data=""
-    
+
     # CACHE_SIEMPRE: Siempre descarga de cache, sin comprobar fechas, excepto cuando no está
     elif modoCache == CACHE_SIEMPRE:
         logger.info("[scrapertools.py] MODO_CACHE=1 (cachear todo)")
-        
+
         # Obtiene los handlers del fichero en la cache
         cachedFile, newFile = getCacheFileNames(url)
-    
+
         # Si no hay ninguno, descarga
         if cachedFile == "":
             logger.debug("[scrapertools.py] No está en cache")
-    
+
             # Lo descarga
             data = downloadpage(url,post,headers)
-    
+
             # Lo graba en cache
             outfile = open(newFile,"w")
             outfile.write(data)
@@ -100,48 +100,48 @@ def cachePage(url,post=None,headers=[['User-Agent', 'Mozilla/5.0 (Macintosh; U; 
             infile = open( cachedFile )
             data = infile.read()
             infile.close()
-    
+
     # CACHE_ACTIVA: Descarga de la cache si no ha cambiado
     else:
         logger.info("[scrapertools.py] MODO_CACHE=0 (automática)")
-        
+
         # Datos descargados
         data = ""
-        
+
         # Obtiene los handlers del fichero en la cache
         cachedFile, newFile = getCacheFileNames(url)
-    
+
         # Si no hay ninguno, descarga
         if cachedFile == "":
             logger.debug("[scrapertools.py] No está en cache")
-    
+
             # Lo descarga
             data = downloadpage(url,post,headers)
-            
+
             # Lo graba en cache
             outfile = open(newFile,"w")
             outfile.write(data)
             outfile.flush()
             outfile.close()
             logger.info("[scrapertools.py] Grabado a " + newFile)
-    
+
         # Si sólo hay uno comprueba el timestamp (hace una petición if-modified-since)
         else:
             # Extrae el timestamp antiguo del nombre del fichero
             oldtimestamp = time.mktime( time.strptime(cachedFile[-20:-6], "%Y%m%d%H%M%S") )
-    
+
             logger.info("[scrapertools.py] oldtimestamp="+cachedFile[-20:-6])
             logger.info("[scrapertools.py] oldtimestamp="+time.ctime(oldtimestamp))
-            
+
             # Hace la petición
             updated,data = downloadtools.downloadIfNotModifiedSince(url,oldtimestamp)
-            
+
             # Si ha cambiado
             if updated:
                 # Borra el viejo
                 logger.debug("[scrapertools.py] Borrando "+cachedFile)
                 os.remove(cachedFile)
-                
+
                 # Graba en cache el nuevo
                 outfile = open(newFile,"w")
                 outfile.write(data)
@@ -161,10 +161,10 @@ def getCacheFileNames(url):
 
     # Obtiene el directorio de la cache para esta url
     siteCachePath = getSiteCachePath(url)
-        
+
     # Obtiene el ID de la cache (md5 de la URL)
     cacheId = get_md5(url)
-        
+
     logger.debug("[scrapertools.py] cacheId="+cacheId)
 
     # Timestamp actual
@@ -182,7 +182,7 @@ def getCacheFileNames(url):
     # Busca ese fichero en la cache
     cachedFile = getCachedFile(siteCachePath,cacheId)
 
-    return cachedFile, newFile 
+    return cachedFile, newFile
 
 # Busca ese fichero en la cache
 def getCachedFile(siteCachePath,cacheId):
@@ -200,7 +200,7 @@ def getCachedFile(siteCachePath,cacheId):
         for fichero in ficheros:
             logger.debug("[scrapertools.py] Borrando "+fichero)
             os.remove(fichero)
-        
+
         cachedFile = ""
 
     # Hay uno: fichero cacheado
@@ -210,7 +210,7 @@ def getCachedFile(siteCachePath,cacheId):
     return cachedFile
 
 def getSiteCachePath(url):
-    # Obtiene el dominio principal de la URL    
+    # Obtiene el dominio principal de la URL
     dominio = urlparse.urlparse(url)[1]
     logger.debug("[scrapertools.py] dominio="+dominio)
     nombres = dominio.split(".")
@@ -219,7 +219,7 @@ def getSiteCachePath(url):
     else:
         dominio = nombres[0]
     logger.debug("[scrapertools.py] dominio="+dominio)
-    
+
     # Crea un directorio en la cache para direcciones de ese dominio
     siteCachePath = os.path.join( CACHE_PATH , dominio )
     if not os.path.exists(CACHE_PATH):
@@ -233,7 +233,7 @@ def getSiteCachePath(url):
             os.mkdir( siteCachePath )
         except:
             logger.error("[scrapertools.py] Error al crear directorio "+siteCachePath)
-    
+
     logger.debug("[scrapertools.py] siteCachePath="+siteCachePath)
 
     return siteCachePath
@@ -310,12 +310,12 @@ class NoRedirectHandler(urllib2.HTTPRedirectHandler):
 def downloadpage(url,post=None,headers=[['User-Agent', 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; es-ES; rv:1.9.2.12) Gecko/20101026 Firefox/3.6.12']],follow_redirects=True, timeout=socket.getdefaulttimeout()):
     logger.info("[scrapertools.py] downloadpage")
     logger.info("[scrapertools.py] url="+url)
-    
+
     if post is not None:
         logger.info("[scrapertools.py] post="+post)
     else:
         logger.info("[scrapertools.py] post=None")
-    
+
     # ---------------------------------
     # Instala las cookies
     # ---------------------------------
@@ -412,7 +412,7 @@ def downloadpage(url,post=None,headers=[['User-Agent', 'Mozilla/5.0 (Macintosh; 
         logger.info("[scrapertools.py] petición GET")
     else:
         logger.info("[scrapertools.py] petición POST")
-    
+
     # Añade las cabeceras
     logger.info("[scrapertools.py] ---------------------------")
     for header in headers:
@@ -426,20 +426,19 @@ def downloadpage(url,post=None,headers=[['User-Agent', 'Mozilla/5.0 (Macintosh; 
 
         if timeout is None:
             handle=urlopen(req)
-        else:        
+        else:
             #Para todas las versiones:
             deftimeout = socket.getdefaulttimeout()
             socket.setdefaulttimeout(timeout)
-            handle=urlopen(req)            
+            handle=urlopen(req)
             socket.setdefaulttimeout(deftimeout)
-        
+
         # Actualiza el almacén de cookies
         cj.save(ficherocookies)
 
         # Lee los datos y cierra
         if handle.info().get('Content-Encoding') == 'gzip':
             logger.info("[scrapertools.py] gzipped")
-            fin = inicio
             import StringIO
             data=handle.read()
             compressedstream = StringIO.StringIO(data)
@@ -447,7 +446,6 @@ def downloadpage(url,post=None,headers=[['User-Agent', 'Mozilla/5.0 (Macintosh; 
             gzipper = gzip.GzipFile(fileobj=compressedstream)
             data = gzipper.read()
             gzipper.close()
-            fin = time.clock()
         else:
             logger.info("[scrapertools.py] normal")
             data = handle.read()
@@ -474,14 +472,14 @@ def downloadpage(url,post=None,headers=[['User-Agent', 'Mozilla/5.0 (Macintosh; 
     # Si falla la repite sustituyendo caracteres especiales
     except:
         req = urllib2.Request(url.replace(" ","%20"))
-    
+
         # Añade las cabeceras
         for header in headers:
             req.add_header(header[0],header[1])
 
         response = urllib2.urlopen(req)
     '''
-    
+
     # Tiempo transcurrido
     fin = time.clock()
     logger.info("[scrapertools.py] Descargado en %d segundos " % (fin-inicio+1))
@@ -583,7 +581,7 @@ def downloadpagewithcookies(url):
     handle.close()
 
     return data
-    
+
 def downloadpageWithoutCookies(url):
     logger.info("[scrapertools.py] Descargando " + url)
     inicio = time.clock()
@@ -602,15 +600,15 @@ def downloadpageWithoutCookies(url):
     fin = time.clock()
     logger.info("[scrapertools.py] Descargado en %d segundos " % (fin-inicio+1))
     return data
-    
+
 
 def downloadpageGzip(url):
-    
+
     #  Inicializa la librería de las cookies
     ficherocookies = os.path.join( config.get_data_path(), 'cookies.dat' )
     logger.info("Cookiefile="+ficherocookies)
     inicio = time.clock()
-    
+
     cj = None
     ClientCookie = None
     cookielib = None
@@ -682,11 +680,10 @@ def downloadpageGzip(url):
 
     #txheaders =  {'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3',
     #              'Referer':'http://www.megavideo.com/?s=signup'}
-    
-    import httplib
+
     parsedurl = urlparse.urlparse(url)
     logger.info("parsedurl="+str(parsedurl))
-        
+
     txheaders =  {
     'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3',
     'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -706,10 +703,10 @@ def downloadpageGzip(url):
 
     data=handle.read()
     handle.close()
-    
+
     fin = time.clock()
     logger.info("[scrapertools.py] Descargado 'Gzipped data' en %d segundos " % (fin-inicio+1))
-        
+
     # Descomprime el archivo de datos Gzip
     try:
         fin = inicio
@@ -730,7 +727,7 @@ def printMatches(matches):
     for match in matches:
         logger.info("[scrapertools.py] %d %s" % (i , match))
         i = i + 1
-        
+
 def get_match(data,patron,index=0):
     matches = re.findall( patron , data , flags=re.DOTALL )
     return matches[index]
@@ -750,7 +747,7 @@ def entityunescape(cadena):
     return unescape(cadena)
 
 def unescape(text):
-    """Removes HTML or XML character references 
+    """Removes HTML or XML character references
        and entities from a text string.
        keep &amp;, &gt;, &lt; in the source code.
     from Fredrik Lundh
@@ -761,11 +758,11 @@ def unescape(text):
         if text[:2] == "&#":
             # character reference
             try:
-                if text[:3] == "&#x":   
+                if text[:3] == "&#x":
                     return unichr(int(text[3:-1], 16)).encode("utf-8")
                 else:
                     return unichr(int(text[2:-1])).encode("utf-8")
-                  
+
             except ValueError:
                 logger.info("error de valor")
                 pass
@@ -810,9 +807,9 @@ def decodeHtmlentities(string):
                 return unichr(cp).encode('utf-8')
             else:
                 return match.group()
-                
+
     return entity_re.subn(substitute_entity, string)[0]
-    
+
 def entitiesfix(string):
     # Las entidades comienzan siempre con el símbolo & , y terminan con un punto y coma ( ; ).
     string = string.replace("&aacute","&aacute;")
@@ -864,22 +861,22 @@ def htmlclean(cadena):
     cadena = re.compile("<i[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</iframe>","")
     cadena = cadena.replace("</i>","")
-    
+
     cadena = re.compile("<table[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</table>","")
-    
+
     cadena = re.compile("<td[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</td>","")
-    
+
     cadena = re.compile("<div[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</div>","")
-    
+
     cadena = re.compile("<dd[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</dd>","")
 
     cadena = re.compile("<font[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</font>","")
-    
+
     cadena = re.compile("<strong[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</strong>","")
 
@@ -891,16 +888,16 @@ def htmlclean(cadena):
 
     cadena = re.compile("<a[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</a>","")
-    
+
     cadena = re.compile("<p[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</p>","")
 
     cadena = re.compile("<ul[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</ul>","")
-    
+
     cadena = re.compile("<h1[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</h1>","")
-    
+
     cadena = re.compile("<h2[^>]*>",re.DOTALL).sub("",cadena)
     cadena = cadena.replace("</h2>","")
 
@@ -911,9 +908,9 @@ def htmlclean(cadena):
     cadena = cadena.replace("</h4>","")
 
     cadena = re.compile("<!--[^-]+-->",re.DOTALL).sub("",cadena)
-    
+
     cadena = re.compile("<img[^>]*>",re.DOTALL).sub("",cadena)
-    
+
     cadena = re.compile("<br[^>]*>",re.DOTALL).sub("",cadena)
 
     cadena = re.compile("<object[^>]*>",re.DOTALL).sub("",cadena)
@@ -934,9 +931,9 @@ def htmlclean(cadena):
 
 
 def slugify(title):
-    
+
     #print title
-    
+
     # Sustituye acentos y eñes
     title = title.replace("Á","a")
     title = title.replace("É","e")
@@ -968,23 +965,23 @@ def slugify(title):
     # Pasa a minúsculas
     title = title.lower().strip()
 
-    # Elimina caracteres no válidos 
+    # Elimina caracteres no válidos
     validchars = "abcdefghijklmnopqrstuvwxyz1234567890- "
     title = ''.join(c for c in title if c in validchars)
 
     # Sustituye espacios en blanco duplicados y saltos de línea
     title = re.compile("\s+",re.DOTALL).sub(" ",title)
-    
+
     # Sustituye espacios en blanco por guiones
     title = re.compile("\s",re.DOTALL).sub("-",title.strip())
 
     # Sustituye espacios en blanco duplicados y saltos de línea
     title = re.compile("\-+",re.DOTALL).sub("-",title)
-    
+
     # Arregla casos especiales
     if title.startswith("-"):
         title = title [1:]
-    
+
     if title=="":
         title = "-"+str(time.time())
 
@@ -1003,18 +1000,18 @@ def remove_show_from_title(title,show):
 
         if title.startswith("-"):
             title = title[ 1: ].strip()
-    
+
         if title=="":
             title = str( time.time() )
-        
+
         # Vuelve a utf-8
         title = title.encode("utf-8","ignore")
         show = show.encode("utf-8","ignore")
-    
+
     return title
 
-def getRandom(str):
-    return get_md5(str)
+def getRandom(string):
+    return get_md5(string)
 
 def getLocationHeaderFromResponse(url):
     return get_header_from_response(url,header_to_get="location")
@@ -1027,14 +1024,10 @@ def get_header_from_response(url,header_to_get="",post=None,headers=[['User-Agen
         logger.info("[scrapertools.py] post="+post)
     else:
         logger.info("[scrapertools.py] post=None")
-    
+
     #  Inicializa la librería de las cookies
     ficherocookies = os.path.join( config.get_setting("cookies.dir"), 'cookies.dat' )
     logger.info("[scrapertools.py] ficherocookies="+ficherocookies)
-
-    cj = None
-    ClientCookie = None
-    cookielib = None
 
     import cookielib
     # importing cookielib worked
@@ -1072,14 +1065,7 @@ def get_header_from_response(url,header_to_get="",post=None,headers=[['User-Agen
         logger.info("[scrapertools.py] petición GET")
     else:
         logger.info("[scrapertools.py] petición POST")
-    
-    # Login y password Filenium
-    # http://abcd%40gmail.com:mipass@filenium.com/get/Oi8vd3d3/LmZpbGVz/ZXJ2ZS5j/b20vZmls/ZS9kTnBL/dm11/b0/?.zip
-    if "filenium" in url:
-        from servers import filenium
-        url , authorization_header = filenium.extract_authorization_header(url)
-        headers.append( [ "Authorization",authorization_header ] )
-    
+
     # Array de cabeceras
     logger.info("[scrapertools.py] ---------------------------")
     for header in headers:
@@ -1090,7 +1076,7 @@ def get_header_from_response(url,header_to_get="",post=None,headers=[['User-Agen
     # Construye el request
     req = Request(url, post, txheaders)
     handle = urlopen(req)
-    
+
     # Actualiza el almacén de cookies
     cj.save(ficherocookies)
 
@@ -1121,14 +1107,11 @@ def get_headers_from_response(url,post=None,headers=[['User-Agent', 'Mozilla/5.0
         logger.info("[scrapertools.py] post="+post)
     else:
         logger.info("[scrapertools.py] post=None")
-    
+
     #  Inicializa la librería de las cookies
     ficherocookies = os.path.join( config.get_setting("cookies.dir"), 'cookies.dat' )
     logger.info("[scrapertools.py] ficherocookies="+ficherocookies)
 
-    cj = None
-    ClientCookie = None
-    cookielib = None
 
     import cookielib
     # importing cookielib worked
@@ -1162,7 +1145,7 @@ def get_headers_from_response(url,post=None,headers=[['User-Agent', 'Mozilla/5.0
         logger.info("[scrapertools.py] petición GET")
     else:
         logger.info("[scrapertools.py] petición POST")
-    
+
     # Array de cabeceras
     logger.info("[scrapertools.py] ---------------------------")
     for header in headers:
@@ -1173,7 +1156,7 @@ def get_headers_from_response(url,post=None,headers=[['User-Agent', 'Mozilla/5.0
     # Construye el request
     req = Request(url, post, txheaders)
     handle = urlopen(req)
-    
+
     # Actualiza el almacén de cookies
     cj.save(ficherocookies)
 
@@ -1182,7 +1165,6 @@ def get_headers_from_response(url,post=None,headers=[['User-Agent', 'Mozilla/5.0
     info = handle.info()
     logger.info("[scrapertools.py] Respuesta")
     logger.info("[scrapertools.py] ---------------------------")
-    location_header=""
     for header in info:
         logger.info("[scrapertools.py] "+header+"="+info[header])
         return_headers.append( [header,info[header]] )
@@ -1211,8 +1193,7 @@ def unseo(cadena):
     return cadena
 
 def get_filename_from_url(url):
-    
-    import urlparse
+
     parsed_url = urlparse.urlparse(url)
     try:
         filename = parsed_url.path
@@ -1226,8 +1207,7 @@ def get_filename_from_url(url):
     return filename
 
 def get_domain_from_url(url):
-    
-    import urlparse
+
     parsed_url = urlparse.urlparse(url)
     try:
         filename = parsed_url.netloc
@@ -1250,7 +1230,7 @@ def get_season_and_episode(title):
     filename=matches[0][0]+"x"+matches[0][1]
 
     logger.info("get_season_and_episode('"+title+"') -> "+filename)
-    
+
     return filename
 
 def get_sha1(cadena):
@@ -1260,8 +1240,8 @@ def get_sha1(cadena):
     except:
         import sha
         import binascii
-        devuelve = binascii.hexlify(sha.new(url).digest())
-    
+        devuelve = binascii.hexlify(sha.new(cadena).digest())
+
     return devuelve
 
 def get_md5(cadena):
@@ -1271,6 +1251,6 @@ def get_md5(cadena):
     except:
         import md5
         import binascii
-        devuelve = binascii.hexlify(md5.new(url).digest())
-    
+        devuelve = binascii.hexlify(md5.new(cadena).digest())
+
     return devuelve
