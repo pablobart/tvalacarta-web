@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<version>
+	<name>rtve</name>
+	<tag>8</tag>
+	<date>06/07/2012</date>
+	<changes>Cambios en el esquema de protección de vídeos</changes>
+</version>
