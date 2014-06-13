@@ -190,7 +190,8 @@ def downloadpage(url,post=None,headers=[['User-Agent', 'Mozilla/5.0 (Macintosh; 
             socket.setdefaulttimeout(deftimeout)
 
         # Actualiza el almacén de cookies
-        cj.save(ficherocookies)
+        #Exception
+        #cj.save(ficherocookies)
 
         # Lee los datos y cierra
         if handle.info().get('Content-Encoding') == 'gzip':

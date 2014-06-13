@@ -1,7 +1,6 @@
-import jinja2
+import jinja2, webapp2
 import sys
-import logging
-import webapp2
+import json
 
 from core import platform_name
 platform_name.PLATFORM_NAME="developer"
@@ -15,24 +14,16 @@ JINJA_ENVIRONMENT = jinja2.Environment(
 class MainHandler(webapp2.RequestHandler):
 
     def get(self):
+        from tvalacarta.channels import a3media as channelmodule
+        resultado = channelmodule.mainlist(None)
+        for item in resultado:
+            jsonOut = json.dumps(item, default=lambda o: o.__dict__)
+            self.response.write(jsonOut)
+            self.response.write("<br><br><br>")
 
-        try:
-            from tvalacarta.channels import antena3 as channelmodule
-            resultado = channelmodule.test()
-            self.response.write(resultado)
-        except:
-            import traceback
-
-            exc_type, exc_value, exc_tb = sys.exc_info()
-            lines = traceback.format_exception(exc_type, exc_value, exc_tb)
-            for line in lines:
-                line_splits = line.split("\n")
-                for line_split in line_splits:
-                    print line_split
-
-        template_values = {'loggedInUserName': "test"}
-        template = JINJA_ENVIRONMENT.get_template('index.html')
-        self.response.write(template.render(template_values))
+        #template_values = {'loggedInUserName': resultado}
+        #template = JINJA_ENVIRONMENT.get_template('index.html')
+        #self.response.write(template.render(template_values))
 
 
     def post(self):
