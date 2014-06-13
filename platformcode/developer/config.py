@@ -5,7 +5,7 @@
 # tvalacarta
 # http://blog.tvalacarta.info/plugin-xbmc/tvalacarta/
 #-------------------------------------------------------------------------------
-# Creado por: 
+# Creado por:
 # Jesús (tvalacarta@gmail.com)
 # Jurrabi (jurrabi@gmail.com)
 # Licencia: GPL (http://www.gnu.org/licenses/gpl-3.0.html)
@@ -43,7 +43,7 @@ def get_platform():
 
 def get_system_platform():
     return "desktop"
-    
+
 def open_settings():
     return
 
@@ -62,7 +62,7 @@ def get_setting(name):
     except:
         #print "get_setting",name,"(vacío)"
         return ""
-    
+
 def set_setting(name,value):
     #print "set_setting",name,value
     overrides[name]=value
@@ -73,7 +73,7 @@ def get_localized_string(code):
         return cadenas[0]
     else:
         return "%d" % code
-    
+
 def get_library_path():
     # Una forma rápida de lanzar un error
     import noexiste
@@ -83,6 +83,9 @@ def get_temp_file(filename):
     return os.path.join(get_data_path(),filename)
 
 def get_data_path():
+    return "no-path"
+
+
     data_path = os.path.join( os.path.expanduser("~") , ".developer" )
     if not os.path.exists(data_path):
         os.mkdir(data_path)
