@@ -123,7 +123,7 @@ def filterchannels(category):
             returnlist.append(channel)
     else:
         channelslist = channels_list()
-    
+
         for channel in channelslist:
             # Pasa si no ha elegido "todos" y no está en la categoría elegida
             if category<>"*" and category not in channel.category:
@@ -192,7 +192,7 @@ def channels_list():
     itemlist.append( Item( title="Tuteve (Perú)"              , channel="tuteve"               , language="ES" , category="N"   , type="generic" )) # jesus 04/08/2013
     itemlist.append( Item( title="TV Pública (Argentina)"     , channel="tvpublica"            , language="ES" , category="N"   , type="generic" )) # rsantaella 07/06/2013
     itemlist.append( Item( title="TVE"                        , channel="rtve"                 , language="ES" , category="N"   , type="generic" ))
-    itemlist.append( Item( title="Tvolucion.com"              , channel="tvolucion"            , language="ES" , category="N"   , type="generic" )) # pedro 20/06/2012 
+    itemlist.append( Item( title="Tvolucion.com"              , channel="tvolucion"            , language="ES" , category="N"   , type="generic" )) # pedro 20/06/2012
     itemlist.append( Item( title="TV3 (Cataluña)"             , channel="tv3"                  , language="ES" , category="I,A" , type="generic" ))
     itemlist.append( Item( title="TVC (Canarias)"             , channel="rtvc"                 , language="ES" , category="R"   , type="generic" ))
     itemlist.append( Item( title="TVG (Galicia)"              , channel="tvg"                  , language="ES" , category="R"   , type="generic" ))
@@ -202,6 +202,13 @@ def channels_list():
 
     return itemlist
 
+def fav_channels_list():
+    itemlist = []
+    itemlist.append( Item( title="AtresPlayer"                , channel="a3media"              , language="ES" , category="N"   , type="generic" , url="a3media" , thumbnail='http://cdn6.portalprogramasnet.com/imagenes/programas/es/498/17498_0.jpg'))
+    itemlist.append( Item( title="Mitele"                     , channel="mitele"               , language="ES" , category="N"   , type="generic" , url="mitele"  , thumbnail='http://blog.tvalacarta.info/logos/mitele.png')) # jesus, truenon, boludiko 05/04/2012
+    itemlist.append( Item( title="TVE"                        , channel="rtve"                 , language="ES" , category="N"   , type="generic" , url="rtve"    , thumbnail='http://windows-phone.teradown.com/images/logos/rtve-tableta-web-apps.png'))
+    return itemlist
+
 def addfolder(nombre,channelname,accion,category="",thumbnailname="",folder=True):
     #print "addfolder"
     if category == "":
@@ -209,7 +216,7 @@ def addfolder(nombre,channelname,accion,category="",thumbnailname="",folder=True
             category = unicode( nombre, "utf-8" ).encode("iso-8859-1")
         except:
             pass
-    
+
     import xbmc
 
     if config.get_setting("thumbnail_type")=="0":
@@ -218,7 +225,7 @@ def addfolder(nombre,channelname,accion,category="",thumbnailname="",folder=True
         IMAGES_PATH = xbmc.translatePath( os.path.join( config.get_runtime_path(), 'resources' , 'images' , 'banners' ) )
     elif config.get_setting("thumbnail_type")=="2":
         IMAGES_PATH = xbmc.translatePath( os.path.join( config.get_runtime_path(), 'resources' , 'images' , 'squares' ) )
-    
+
     if config.get_setting("thumbnail_type")=="0":
         WEB_PATH = "http://tvalacarta.mimediacenter.info/posters/"
     elif config.get_setting("thumbnail_type")=="1":

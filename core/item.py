@@ -1,61 +1,45 @@
-class Item(object):
-    channel = ""
-    title = ""
-    url = ""
-    page = ""
-    thumbnail = ""
-    plot = ""
-    duration = ""
-    fanart = ""
-    folder = ""
-    action = ""
-    server = "directo"
-    extra = ""
-    show = ""
-    category = ""
-    childcount = 0
-    language = ""
-    type = ""
-    context = ""
-    subtitle = ""
-    totalItems =0
-    overlay = None
-    password = ""
-    fulltitle = ""
-    viewmode = "list"
+from google.appengine.ext import ndb
 
-    def __init__(self, channel="", title="", url="", page="", thumbnail="", plot="", duration="", fanart="", action="", server="directo", extra="", show="", category = "" , language = "" , subtitle="" , folder=True, context = "",totalItems = 0, overlay = None, type="", password="", fulltitle="", viewmode="list" ):
-        self.channel = channel
-        self.title = title
-        self.url = url
-        if page=="":
-            self.page = url
+class Item(ndb.Model):
+    channel = ndb.StringProperty(indexed=False)
+    title = ndb.StringProperty(indexed=False)
+    url = ndb.StringProperty(indexed=True)
+    page = ndb.StringProperty(indexed=False)
+    thumbnail = ndb.StringProperty(indexed=False)
+    plot = ndb.StringProperty(indexed=False)
+    duration = ndb.StringProperty(indexed=False)
+    fanart = ndb.StringProperty(indexed=False)
+    folder = ndb.BooleanProperty(indexed=False)
+    action = ndb.StringProperty(indexed=False)
+    server =  ndb.StringProperty(indexed=False, default='directo')
+    extra = ndb.StringProperty(indexed=False)
+    show = ndb.StringProperty(indexed=False)
+    category = ndb.StringProperty(indexed=False)
+    childcount = ndb.IntegerProperty(indexed=False)
+    language = ndb.StringProperty(indexed=False)
+    type = ndb.StringProperty(indexed=False)
+    context = ndb.StringProperty(indexed=False)
+    subtitle = ndb.StringProperty(indexed=False)
+    totalItems = ndb.IntegerProperty(indexed=False)
+    overlay = ndb.StringProperty(indexed=False)
+    password = ndb.StringProperty(indexed=False)
+    fulltitle = ndb.StringProperty(indexed=False)
+    viewmode = ndb.StringProperty(indexed=False, default='list')
+
+    @property
+    def unititle(self):
+        return unicode(self.title, "utf8")
+
+    @property
+    def thumbnailURL(self):
+        if self.thumbnail is None:
+            return 'http://ia.media-imdb.com/images/G/01/imdb/images/nopicture/small/no-video-slate-856072904._V379390253_.png'
         else:
-            self.page = page
-        self.thumbnail = thumbnail
-        self.plot = plot
-        self.duration = duration
-        self.fanart = fanart
-        self.folder = folder
-        self.server = server
-        self.action = action
-        self.extra = extra
-        self.show = show
-        self.category = category
-        self.childcount = 0
-        self.language = language
-        self.type = type
-        self.context = context
-        self.subtitle = subtitle
-        self.totalItems = totalItems
-        self.overlay = overlay
-        self.password = password
-        self.fulltitle = fulltitle
-        self.viewmode = viewmode
+            return self.thumbnail
 
     def tostring(self):
         return "title=["+self.title+"], url=["+self.url+"], thumbnail=["+self.thumbnail+"], action=["+self.action+"], show=["+self.show+"], category=["+self.category+"]"
-    
+
     def serialize(self):
         separator = "|>|<|"
         devuelve = ""
@@ -69,7 +53,7 @@ class Item(object):
         devuelve = devuelve + self.fulltitle + separator
         devuelve = devuelve + self.viewmode + separator
         return devuelve
-    
+
     def deserialize(self,cadena):
         trozos=cadena.split("|>|<|")
         self.title = trozos[0]
@@ -81,12 +65,3 @@ class Item(object):
         self.category = trozos[6]
         self.fulltitle = trozos[7]
         self.viewmode = trozos[8]
-
-if __name__ == "__main__":
-    item = Item(title="bla b", url="http://bla")
-    cadena=item.serialize()
-    print cadena
-    
-    item2 = Item()
-    item2.deserialize(cadena)
-    print item2.title,item2.url
