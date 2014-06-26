@@ -1,0 +1,10 @@
+{% extends "index.html" %}
+{% block title %}{% endblock %}
+{% block content %}
+    <ul data-role="listview" data-inset="true">
+    {% for item in channels %}
+        <li><a href="/channel/{{ item.channel }}">
+        <img src="{{ item.thumbnailURL }}">
+        <h2>{{ item.title }}</h2></a></li>
+{% endfor %}
+{% endblock %}

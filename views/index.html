@@ -8,16 +8,11 @@
   <link type="text/css" rel="stylesheet" href="/stylesheets/main.css" />
   {% block head %}
   {% endblock %}
-  <title>{% block title %}{% endblock %}</title>
+  <title>{{ title }}</title>
   </head>
   <body>
     <div id="content">
-    <ul data-role="listview" data-inset="true">
-    {% for item in channels %}
-        <li><a href="{{ item.url }}" action="{{ item.action }}">
-        <img src="{{ item.thumbnailURL }}">
-        <h2>{{ item.unititle }}</h2></a></li>
-    {% endfor %}
+    {% block content %}{% endblock %}
     </ul>
     </div>
   </body>

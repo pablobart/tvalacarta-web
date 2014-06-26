@@ -12,7 +12,7 @@ class Item(ndb.Model):
     folder = ndb.BooleanProperty(indexed=False)
     action = ndb.StringProperty(indexed=False)
     server =  ndb.StringProperty(indexed=False, default='directo')
-    extra = ndb.StringProperty(indexed=False)
+    extra = ndb.StringProperty(indexed=False, default='')
     show = ndb.StringProperty(indexed=False)
     category = ndb.StringProperty(indexed=False)
     childcount = ndb.IntegerProperty(indexed=False)
@@ -32,7 +32,7 @@ class Item(ndb.Model):
 
     @property
     def thumbnailURL(self):
-        if self.thumbnail is None:
+        if self.thumbnail is None or self.thumbnail is "":
             return 'http://ia.media-imdb.com/images/G/01/imdb/images/nopicture/small/no-video-slate-856072904._V379390253_.png'
         else:
             return self.thumbnail

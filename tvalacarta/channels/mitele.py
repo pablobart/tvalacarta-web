@@ -13,7 +13,6 @@ from core import config
 from core import scrapertools
 from core import aes          
 from core.item import Item
-from servers import servertools
 from StringIO import StringIO
 import gzip
 import xml.parsers.expat

@@ -1,6 +1,9 @@
 import jinja2, webapp2
 import sys
 import json
+import logging
+from core.item import Item
+from google.appengine.ext import ndb
 
 from core import platform_name
 platform_name.PLATFORM_NAME="developer"
@@ -14,23 +17,54 @@ JINJA_ENVIRONMENT = jinja2.Environment(
 class MainHandler(webapp2.RequestHandler):
 
     def get(self):
-        #from tvalacarta.channels import a3media as channelmodule
-        #channels = channelmodule.mainlist(None)
         import channelselector
         channels = channelselector.fav_channels_list()
-#         for item in channels:
-#             jsonOut = json.dumps(item, default=lambda o: o.__dict__)
-#             self.response.write(jsonOut)
-#             self.response.write("<br><br><br>")
-
         template_values = {'channels': channels}
-        template = JINJA_ENVIRONMENT.get_template('index.html')
+        template = JINJA_ENVIRONMENT.get_template('channels.html')
         self.response.write(template.render(template_values))
 
+class ChannelHandler(webapp2.RequestHandler):
 
-    def post(self):
-        self.response.headers['Content-Type'] = 'application/json'
-        self.response.write("POST")
+    def get(self, channel):
+        # try:
+        exec "from tvalacarta.channels import "+channel+" as channelmodule"
+        sections = channelmodule.mainlist(None)
+        ndb.put_multi(sections)
+        template_values = {'items': sections}
+        template = JINJA_ENVIRONMENT.get_template('item.html')
+        self.response.write(template.render(template_values))
+        # except:
+            # self.response.write("<h1>Incorrect Channel</h1>")
 
-#{"category": "", "language": "", "title": "Documentales", "totalItems": 0, "password": "", "viewmode": "list", "action": "secciones", "channel": "a3media", "overlay": null, "folder": true, "extra": "", "url": "http://servicios.atresplayer.com/api/categorySections/80000011", "server": "directo", "type": "", "fanart": "", "context": "", "subtitle": "", "thumbnail": "", "plot": "", "show": "", "fulltitle": "", "duration": "", "page": "http://servicios.atresplayer.com/api/categorySections/80000011", "childcount": 0}
-#{"channel": "a3media", "viewmode": "list", "action": "", "totalItems": 0, "overlay": null, "context": "", "category": "N", "thumbnail": "", "subtitle": "", "folder": true, "title": "AtresPlayer", "fanart": "", "language": "ES", "extra": "", "show": "", "type": "generic", "fulltitle": "", "plot": "", "url": "", "duration": "", "page": "", "password": "", "server": "directo", "childcount": 0}
+class ItemHandler(webapp2.RequestHandler):
+
+    def get(self, itemid):
+        # try:
+        item_key = ndb.Key(urlsafe=itemid)
+        item = item_key.get()
+        if item is not None:
+            exec "from tvalacarta.channels import "+item.channel+" as channelmodule"
+            if item.action == "play":
+                playitem = channelmodule.play(item)
+                template_values = {'item':playitem[0]}
+                template = JINJA_ENVIRONMENT.get_template('play.html')
+                self.response.write(template.render(template_values))
+            else:
+                items = []
+                method = getattr(channelmodule, item.action)
+                items = method(item)
+
+                if len(items) > 0:
+                    ndb.put_multi(items)
+                    template_values = {'items':items}
+                    template = JINJA_ENVIRONMENT.get_template('item.html')
+                    self.response.write(template.render(template_values))
+                else:
+                    self.response.write("<h1>No items</h1>")
+        else:
+            self.redirect("/")
+        # except Exception as e:
+            # logging.error(e)
+            # self.redirect("/")
+
+
