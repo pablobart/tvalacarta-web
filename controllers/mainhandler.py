@@ -45,8 +45,13 @@ class ItemHandler(webapp2.RequestHandler):
         if item is not None:
             exec "from tvalacarta.channels import "+item.channel+" as channelmodule"
             if item.action == "play":
-                playitem = channelmodule.play(item)
-                template_values = {'item':playitem[0]}
+                if hasattr(channelmodule, 'play'):
+                    playitem = channelmodule.play(item)[0]
+                else:
+                    from servers import servertools
+                    url = servertools.resolve_video_urls_for_playing(item.channel,item.url,item.password)
+                    playitem = Item(url=url[0][0][1])
+                template_values = {'item':playitem}
                 template = JINJA_ENVIRONMENT.get_template('play.html')
                 self.response.write(template.render(template_values))
             else:
