@@ -19,7 +19,7 @@ FREE_SERVERS.extend(['directo','allmyvideos','adnstream','bliptv','divxstage','d
 FREE_SERVERS.extend(['googlevideo','gigabyteupload','hdplay','filebox','mediafire','modovideo','movshare','novamov','ovfile','putlocker'])
 FREE_SERVERS.extend(['rapidtube','royalvids','rutube','sockshare','stagevu','stagero','tutv','userporn','veoh','veevr','videobam'])
 FREE_SERVERS.extend(['vidbux','videoweed','vidxden','vimeo','vk','watchfreeinhd','youtube','cartoonito','eitb','telemadrid','acbtv','mundonick','tv3','dibujostv','tvn','mtv'])
-FREE_SERVERS.extend(['boing','disneychannel','tvg','telefe','mitele','eltrece','extremaduratv','disneylatino','rtpa','cntv','conectate'])
+FREE_SERVERS.extend(['boing','disneychannel','tvg','telefe','mitele','eltrece','extremaduratv','disneylatino','rtpa','cntv','conectate','telemundo'])
 
 # Lista de TODOS los servidores que funcionan con cuenta premium individual
 PREMIUM_SERVERS = ['wupload','fileserve']#,'uploadedto']
@@ -50,7 +50,7 @@ def find_video_items(item=None, data=None, channel=""):
         from core import scrapertools
         data = scrapertools.cache_page(item.url)
         #logger.info(data)
-
+    
     # Busca los enlaces a los videos
     from core.item import Item
     from servers import servertools
@@ -64,7 +64,7 @@ def find_video_items(item=None, data=None, channel=""):
         scrapedtitle = item.title.strip() + " - " + video[0]
         scrapedurl = video[1]
         server = video[2]
-
+        
         itemlist.append( Item(channel=item.channel, title=scrapedtitle , action="play" , server=server, page=item.page, url=scrapedurl, thumbnail=item.thumbnail, show=item.show , plot=item.plot , folder=False) )
 
     return itemlist
@@ -118,7 +118,7 @@ def resolve_video_urls_for_playing(server,url,video_password="",muestra_dialogo=
                 progreso.create( "pelisalacarta" , "Conectando con "+server)
 
             exec "from servers import "+server+" as server_connector"
-
+    
             if muestra_dialogo:
                 progreso.update( 25 , "Conectando con "+server)
 
@@ -134,7 +134,7 @@ def resolve_video_urls_for_playing(server,url,video_password="",muestra_dialogo=
             # Obtiene enlaces free
             if server in FREE_SERVERS:
                 video_urls = server_connector.get_video_url( page_url=url , video_password=video_password )
-
+                
                 # Si no se encuentran vídeos en modo free, es porque el vídeo no existe
                 if len(video_urls)==0:
                     if muestra_dialogo: progreso.close()
@@ -143,28 +143,28 @@ def resolve_video_urls_for_playing(server,url,video_password="",muestra_dialogo=
             # Obtiene enlaces premium si tienes cuenta en el server
             if server in PREMIUM_SERVERS and config.get_setting(server+"premium")=="true":
                 video_urls = server_connector.get_video_url( page_url=url , premium=(config.get_setting(server+"premium")=="true") , user=config.get_setting(server+"user") , password=config.get_setting(server+"password"), video_password=video_password )
-
+                
                 # Si no se encuentran vídeos en modo premium directo, es porque el vídeo no existe
                 if len(video_urls)==0:
                     if muestra_dialogo: progreso.close()
                     return video_urls,False,"No se puede encontrar el vídeo en "+server
-
+    
             # Obtiene enlaces filenium si tienes cuenta
             if server in FILENIUM_SERVERS and config.get_setting("fileniumpremium")=="true":
-
+    
                 # Muestra un diálogo de progreso
                 if muestra_dialogo:
                     progreso.update( 50 , "Conectando con Filenium")
-
+    
                 exec "from servers import filenium as gen_conector"
-
+                
                 video_gen = gen_conector.get_video_url( page_url=url , premium=(config.get_setting("fileniumpremium")=="true") , user=config.get_setting("fileniumuser") , password=config.get_setting("fileniumpassword"), video_password=video_password )
                 logger.info("[xbmctools.py] filenium url="+video_gen)
                 video_urls.append( [ "[filenium]", video_gen ] )
 
             # Obtiene enlaces realdebrid si tienes cuenta
             if server in REALDEBRID_SERVERS and config.get_setting("realdebridpremium")=="true":
-
+    
                 # Muestra un diálogo de progreso
                 if muestra_dialogo:
                     progreso.update( 75 , "Conectando con Real-Debrid")
@@ -189,7 +189,7 @@ def resolve_video_urls_for_playing(server,url,video_password="",muestra_dialogo=
             # Llegas hasta aquí y no tienes ningún enlace para ver, así que no vas a poder ver el vídeo
             if len(video_urls)==0:
                 # ¿Cual es el motivo?
-
+                
                 # 1) No existe -> Ya está controlado
                 # 2) No tienes alguna de las cuentas premium compatibles
 
@@ -199,7 +199,7 @@ def resolve_video_urls_for_playing(server,url,video_password="",muestra_dialogo=
                 if server in REALDEBRID_SERVERS: listapremium+="Real-Debrid o "
                 if server in PREMIUM_SERVERS: listapremium+=server+" o "
                 listapremium = listapremium[:-3]
-
+    
                 return video_urls,False,"Para ver un vídeo en "+server+" necesitas<br/>una cuenta en "+listapremium
 
         except:

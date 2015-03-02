@@ -17,7 +17,6 @@ CHANNELNAME = "a3media"
 
 import hmac
 
-ANDROID_HEADERS = [ ["User-Agent","Dalvik/1.6.0 (Linux; U; Android 4.3; GT-I9300 Build/JSS15J"] ]
 
 def isGeneric():
     return True
@@ -140,7 +139,7 @@ def temporadas(item):
 def episodios(item):
     logger.info("tvalacarta.channels.a3media episodios")
 
-    data = scrapertools.cachePage(item.url,headers=ANDROID_HEADERS)
+    data = scrapertools.cachePage(item.url)
     #logger.info(data)
     lista = jsontools.load_json(data)
 
@@ -196,27 +195,33 @@ def episodios(item):
 def play(item):
     logger.info("tvalacarta.channels.a3media play")
 
-    token = d(item.extra, "QWtMLXs414Yo+c#_+Q#K@NN)")
+    '''
+    token = d(item.extra, "puessepavuestramerced")
     url = item.url + token
 
-    data = scrapertools.cachePage(url,headers=ANDROID_HEADERS)
+    headers=[]
+    headers.append(["User-Agent","Dalvik/1.6.0 (Linux; U; Android 4.3; GT-I9300 Build/JSS15J"])
+    data = scrapertools.cachePage(url,headers=headers)
     logger.info(data)
     lista = jsontools.load_json(data)
     itemlist = []
     if lista != None: 
         item.url = lista['resultObject']['es']
-        logger.info("tvalacarta.channels.a3media item.url="+item.url)
         itemlist.append(item)
+    '''
+    url = "http://www.pydowntv.com/api/"+item.extra
+    logger.info("url="+url)
+    itemlist = Item(url=url)
 
     return itemlist
 
 
 def getApiTime():
-    stime = scrapertools.cachePage("http://servicios.atresplayer.com/api/admin/time",headers=ANDROID_HEADERS)
+    stime = scrapertools.cachePage("http://servicios.atresplayer.com/api/admin/time")
     return long(stime) / 1000L
 
 def d(s, s1):
-    l = 30000L + getApiTime()
+    l = 3000L + getApiTime()
     s2 = e(s+str(l), s1)
     return "%s|%s|%s" % (s, str(l), s2)
 

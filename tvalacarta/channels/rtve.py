@@ -23,7 +23,7 @@ def mainlist(item):
     logger.info("[rtve.py] mainlist")
 
     itemlist = []
-
+    
     # El primer nivel de menú es un listado por canales
     itemlist.append( Item(channel=CHANNELNAME, title="Todas las cadenas" , action="canal" , thumbnail = "" , url="http://www.rtve.es/alacarta/tve/", extra="tve"))
     itemlist.append( Item(channel=CHANNELNAME, title="La 1"              , action="canal" , thumbnail = "" , url="http://www.rtve.es/alacarta/tve/la1/", extra="la1"))
@@ -59,7 +59,7 @@ def canal(item):
         scrapedextra = match[0]
         if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
         itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="programas" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , extra = item.extra + "/" + scrapedextra + "/1" , category = scrapedtitle ) )
-
+    
     return itemlist
 
 def destacados(item):
@@ -89,6 +89,7 @@ def destacados(item):
         url=urlparse.urljoin(item.url,scrapedurl)
         title=scrapertools.htmlclean(scrapedtitle)
         thumbnail=scrapedthumbnail
+        thumbnail = thumbnail.replace("&amp;","&")
         plot=""
 
         if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
@@ -107,11 +108,11 @@ def destacados(item):
 
 def programas(item):
     logger.info("[rtve.py] programas")
-
+    
     # En la paginación la URL vendrá fijada, si no se construye aquí la primera página
     if not item.url.startswith("http"):
         item.url = "http://www.rtve.es/alacarta/programas/"+item.extra+"/?pageSize=100&order=1&criteria=asc&emissionFilter=all"
-    logger.info("[rtve.py] programas url="+item.url)
+    logger.info("[rtve.py] programas url="+item.url) 
 
     itemlist = []
     data = scrapertools.cachePage(item.url)
@@ -122,7 +123,7 @@ def programas(item):
         # Extrae el enlace a la página siguiente
         patron  = '<a name="paginaIR" href="[^"]+" class="active"><span>[^<]+</span></a>[^<]+'
         patron += '<a name="paginaIR" href="([^"]+)"><span>'
-
+    
         matches = re.findall(patron,data,re.DOTALL)
         if DEBUG: scrapertools.printMatches(matches)
 
@@ -130,7 +131,7 @@ def programas(item):
             # Carga la página siguiente
             url = urlparse.urljoin(item.url,matches[0]).replace("&amp;","&")
             data = scrapertools.cachePage(url)
-
+            
             # Extrae todos los programas
             itemlist.extend(addprogramas(item,data))
         else:
@@ -139,9 +140,9 @@ def programas(item):
     return itemlist
 
 def addprogramas(item,data):
-
+    
     itemlist = []
-
+    
     # Extrae los programas
     patron  = '<li class="[^"]+">.*?'
     patron += '<span class="col_tit" id="([^"]+)" name="progname">[^<]+'
@@ -168,9 +169,9 @@ def addprogramas(item,data):
     return itemlist
 
 def detalle_programa(item):
-
+    
     data = scrapertools.cache_page(item.url)
-
+    
     # Extrae plot
     patron  = '<p class="intro">(.*?)</div>'
     matches = re.findall(patron, data, re.DOTALL)
@@ -183,7 +184,7 @@ def detalle_programa(item):
     matches = re.findall(patron, data, re.DOTALL)
     if len(matches)>0:
         item.thumbnail = urlparse.urljoin(item.url,matches[0])
-
+    
     # Extrae title
     patron  = '<div class="false_cab">[^<]+'
     patron += '<h2>[^<]+'
@@ -192,7 +193,7 @@ def detalle_programa(item):
     matches = re.findall(patron, data, re.DOTALL)
     if len(matches)>0:
         item.title = matches[0].strip()
-
+    
     return item
 
 def episodios(item):
@@ -209,15 +210,35 @@ def episodios(item):
     itemlist = []
 
     # Extrae los vídeos
+    '''
+    <li class="odd">
+    <span class="col_tit" id="2851919" name="progname">
+    <a href="/alacarta/videos/atencion-obras/atencion-obras-josep-maria-flotats-ferran-adria-sanchis-sinisterra/2851919/">Atención Obras - 07/11/14</a>
+    </span>
+    <span class="col_tip">
+    <span>Completo</span>
+    </span>
+    <span class="col_dur">55:35</span>
+    <span class="col_pop"><span title="32% popularidad" class="pc32"><em><strong><span>32%</span></strong></em></span></span>
+    <span class="col_fec">07 nov 2014</span>
+
+    <div id="popup2851919" class="tultip hddn"> 
+    <span id="progToolTip" class="tooltip curved">
+    <span class="pointer"></span>
+    <span class="cerrar" id="close2851919"></span>
+    <span class="titulo-tooltip"><a href="/alacarta/videos/atencion-obras/atencion-obras-josep-maria-flotats-ferran-adria-sanchis-sinisterra/2851919/" title="Ver Atención Obras - 07/11/14">Atención Obras - 07/11/14</a></span>
+    <span class="fecha">07 nov 2014</span>
+    <span class="detalle">Josep María Flotats&#160;trae al Teatro María Guerrero de Madrid&#160;&#8220;El juego del amor y del azar&#8221;&#160;de Pierre de Marivaux. Un texto que ya ha sido estrenado en el Teatre Nacional de Catalunya. C...</span>
+    '''
     patron  = '<li class="[^"]+">.*?'
-    patron += '<span class="col_tit"[^>]+>[^<]+'
-    patron += '<a href="([^"]+)">(.*?)</a>[^<]+'
+    patron += '<span class="col_tit"[^<]+'
+    patron += '<a href="([^"]+)">(.*?)</a[^<]+'
     patron += '</span>[^<]+'
-    patron += '<span class="col_tip">([^<]+)</span>[^<]+'
+    patron += '<span class="col_tip"[^<]+<span>([^<]+)</span[^<]+</span[^<]+'
     patron += '<span class="col_dur">([^<]+)</span>.*?'
     patron += '<span class="col_fec">([^<]+)</span>.*?'
     patron += '<span class="detalle">([^>]+)</span>'
-
+    
     matches = re.findall(patron,data,re.DOTALL)
     if DEBUG: scrapertools.printMatches(matches)
 
@@ -235,7 +256,7 @@ def episodios(item):
         scrapedplot = scrapertools.unescape(match[5].strip())
         scrapedplot = scrapertools.htmlclean(scrapedplot).strip()
         scrapedextra = match[2]
-
+        
         if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
         itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="rtve" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=item.show, category = item.category, extra=scrapedextra, folder=False) )
 
@@ -272,7 +293,7 @@ def episodios(item):
         patron += '<p[^<]+'
         patron += '<span class="time">([^<]+)</span[^<]+'
         patron += '<span class="date">([^<]+)</span>([^<]+)<'
-
+        
         matches = re.findall(patron,data,re.DOTALL)
         if DEBUG: scrapertools.printMatches(matches)
 
@@ -282,7 +303,7 @@ def episodios(item):
             url = urlparse.urljoin(item.url,scrapedurl)
             plot = plot
             thumbnail = scrapedthumbnail
-
+            
             if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
             itemlist.append( Item(channel=CHANNELNAME, title=title , action="play" , server="rtve" , url=url, thumbnail=thumbnail, plot=plot , show=item.show, category = item.category, fanart=thumbnail, viewmode="movie_with_plot", folder=False) )
 
