@@ -1,6 +1,6 @@
 {% extends "index.html" %}
 {% block content %}
-     <p><video src='{{ item.url }}' autoplay loop width="320" height="240" controls></video></p>
+     <p><video src='{{ item.url }}' width="320" height="240" controls="controls"></video></p>
      <p><a href='{{ item.url }}'>HTTP</a></p>
      <p><a href='vlc://{{ item.url }}'>VLC</a></p>
 {% endblock %}
