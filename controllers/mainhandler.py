@@ -65,7 +65,7 @@ class ItemHandler(webapp2.RequestHandler):
                     template = JINJA_ENVIRONMENT.get_template('item.html')
                     self.response.write(template.render(template_values))
                 else:
-                    self.response.write("<h1>No items</h1>")
+                    self.response.write("webapp2.RequestHandler")
         else:
             self.redirect("/")
         # except Exception as e:

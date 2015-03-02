@@ -6,5 +6,9 @@
         <li><a href="/channel/{{ item.channel }}">
         <img src="{{ item.thumbnailURL }}">
         <h2>{{ item.title }}</h2></a></li>
-{% endfor %}
+    {% endfor %}
+        <li><a href="/fav/">
+        <img src="http://upload.wikimedia.org/wikipedia/commons/2/2c/Star-icon.png">
+        <h2>Favoritos</h2></a></li>
+    </ul>
 {% endblock %}

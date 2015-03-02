@@ -5,5 +5,6 @@
         <li><a href="/item/{{ item.key.urlsafe() }}" action="{{ item.action }}" secret="{{ item.url }}">
         <img src="{{ item.thumbnailURL }}">
         <h2>{{ item.title }}</h2></a></li>
-{% endfor %}
+	{% endfor %}
+	</ul>
 {% endblock %}
