@@ -31,8 +31,6 @@ def isGeneric():
 def mainlist(item):
     logger.info("tvalacarta.channels.telemundo mainlist")    
     itemlist = []
-    #http://www.telemundo.com/novelas/una-maid-en-manhattan
-    itemlist.append( Item(channel=__channel__, action="episodios", title="maid", url="http://www.telemundo.com/novelas/una-maid-en-manhattan/capitulos", folder=True))
 
     '''
     <div class="grid-collection-item--MAIN">

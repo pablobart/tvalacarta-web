@@ -72,11 +72,20 @@ def get_video_url( page_url , premium = False , user="" , password="", video_pas
 
     urlVideo = plaintext
     if urlVideo != "":
-        url_video = urlVideo.replace("www.rtve.es", "media5.rtve.es")
+	url_video = urlVideo.replace("www.rtve.es", "media5.rtve.es")
+
+	# -- CarlosJDelgado (mail@carlosjdelgado.com) -- Se obtiene la url con token tras un cambio en rtve
+	url_auth = "http://flash.akamaihd.multimedia.cdn.rtve.es/auth" + urlVideo[url_video.find("/resources"):] + "?v=2.6.8&fp=WIN%2016,0,0,305&r=TDBDO&g=UZEYDOLYKFLY"
+	logger.info("url_auth="+url_auth)
+
+	urlVideo = url_video[:urlVideo.find("/resources")] + urllib2.urlopen(url_auth).read()
+
     else:
         logger.info("No se pudo encontrar el enlace de descarga")
     url=urlVideo
+    
     logger.info("url="+url)
+
 
     # -- Método 24 Mayo 2013 FIN
     
