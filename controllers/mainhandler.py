@@ -2,6 +2,7 @@ import jinja2, webapp2
 import sys
 import json
 import logging
+import re
 from core.item import Item
 from google.appengine.ext import ndb
 
@@ -26,8 +27,8 @@ class MainHandler(webapp2.RequestHandler):
 class ChannelHandler(webapp2.RequestHandler):
 
     def get(self, channel):
-        # try:
-        exec "from tvalacarta.channels import "+channel+" as channelmodule"
+        safe_channel = re.sub(r'\W+', '', channel)
+        exec "from tvalacarta.channels import "+safe_channel+" as channelmodule"
         sections = channelmodule.mainlist(None)
         ndb.put_multi(sections)
         template_values = {'items': sections}

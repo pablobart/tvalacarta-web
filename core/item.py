@@ -1,30 +1,31 @@
 from google.appengine.ext import ndb
 
 class Item(ndb.Model):
-    channel = ndb.StringProperty(indexed=False)
-    title = ndb.StringProperty(indexed=False)
-    url = ndb.StringProperty(indexed=True)
-    page = ndb.StringProperty(indexed=False)
-    thumbnail = ndb.StringProperty(indexed=False)
-    plot = ndb.StringProperty(indexed=False)
-    duration = ndb.StringProperty(indexed=False)
-    fanart = ndb.StringProperty(indexed=False)
-    folder = ndb.BooleanProperty(indexed=False)
-    action = ndb.StringProperty(indexed=False)
-    server =  ndb.StringProperty(indexed=False, default='directo')
-    extra = ndb.StringProperty(indexed=False, default='')
-    show = ndb.StringProperty(indexed=False)
-    category = ndb.StringProperty(indexed=False)
+    action = ndb.StringProperty(indexed=False, default='')
+    category = ndb.StringProperty(indexed=False, default='')
+    channel = ndb.StringProperty(indexed=False, default='')
     childcount = ndb.IntegerProperty(indexed=False)
-    language = ndb.StringProperty(indexed=False)
-    type = ndb.StringProperty(indexed=False)
-    context = ndb.StringProperty(indexed=False)
-    subtitle = ndb.StringProperty(indexed=False)
+    context = ndb.StringProperty(indexed=False, default='')
+    duration = ndb.StringProperty(indexed=False, default='')
+    extra = ndb.StringProperty(indexed=False, default='')
+    fanart = ndb.StringProperty(indexed=False, default='')
+    folder = ndb.BooleanProperty(indexed=False)
+    fulltitle = ndb.StringProperty(indexed=False, default='')
+    language = ndb.StringProperty(indexed=False, default='')
+    overlay = ndb.StringProperty(indexed=False, default='')
+    page = ndb.StringProperty(indexed=False, default='')
+    password = ndb.StringProperty(indexed=False, default='')
+    plot = ndb.StringProperty(indexed=False, default='')
+    server =  ndb.StringProperty(indexed=False, default='directo')
+    show = ndb.StringProperty(indexed=False, default='')
+    subtitle = ndb.StringProperty(indexed=False, default='')
+    thumbnail = ndb.StringProperty(indexed=False, default='')
+    title = ndb.StringProperty(indexed=False, default='')
     totalItems = ndb.IntegerProperty(indexed=False)
-    overlay = ndb.StringProperty(indexed=False)
-    password = ndb.StringProperty(indexed=False)
-    fulltitle = ndb.StringProperty(indexed=False)
+    type = ndb.StringProperty(indexed=False, default='')
+    url = ndb.StringProperty(indexed=True, default='')
     viewmode = ndb.StringProperty(indexed=False, default='list')
+    view = ndb.StringProperty(indexed=False, default='')
 
     @property
     def unititle(self):
@@ -32,13 +33,13 @@ class Item(ndb.Model):
 
     @property
     def thumbnailURL(self):
-        if self.thumbnail is None or self.thumbnail is "":
+        if self.thumbnail is '':
             return 'http://ia.media-imdb.com/images/G/01/imdb/images/nopicture/small/no-video-slate-856072904._V379390253_.png'
         else:
             return self.thumbnail
 
     def tostring(self):
-        return "title=["+self.title+"], url=["+self.url+"], thumbnail=["+self.thumbnail+"], action=["+self.action+"], show=["+self.show+"], category=["+self.category+"]"
+        return "title=["+self.title+"], url=["+self.url+"], thumbnail=["+self.thumbnailURL+"], action=["+self.action+"], show=["+self.show+"], category=["+self.category+"]"
 
     def serialize(self):
         separator = "|>|<|"

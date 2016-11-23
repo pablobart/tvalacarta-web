@@ -17,6 +17,9 @@ PLATFORM_NAME = platform_name.PLATFORM_NAME
 print "PLATFORM_NAME="+PLATFORM_NAME
 exec "import platformcode."+PLATFORM_NAME+".config as platformconfig"
 
+def is_xbmc():
+    return False
+
 def force_platform(platform_name):
     global PLATFORM_NAME
     
