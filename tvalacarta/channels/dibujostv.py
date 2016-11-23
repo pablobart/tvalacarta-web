@@ -193,7 +193,7 @@ def episodios(item):
         itemlist.extend( episodios(next_page_item) )
     except:
     	#en la última página añade la entrada de "Opciones para esta serie"
-        if (config.get_platform().startswith("xbmc") or config.get_platform().startswith("boxee")) and len(itemlist)>0:
+        if config.is_xbmc() and len(itemlist)>0:
             itemlist.append( Item(channel=item.channel, title=">> Opciones para esta serie", url=item.extra, action="serie_options##episodios", thumbnail=item.thumbnail , show=item.show, folder=False))
 
     return itemlist

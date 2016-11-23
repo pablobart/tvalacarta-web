@@ -10,6 +10,7 @@ import urlparse,urllib,re
 from core import logger
 from core import scrapertools
 from core.item import Item 
+from core import jsontools
 
 DEBUG = False
 CHANNELNAME = "tvg"
@@ -31,49 +32,38 @@ def novedades(item):
 
     # Lee la página del programa
     data = scrapertools.cache_page(item.url)
-    # Descarga la página
-    logger.info("data="+data)
-    data = data.replace("\\","")
+    data = scrapertools.find_single_match(data,"LTIMAS ENTRADAS -->(.*?)<!--")
 
     # Extrae los videos
     '''
-    <li id="programa-584354" class="listadoimagenes-li">
-    <div id="imagen-programa-584354" class="listadoimagenes-imagen">
-    <a href="/tvg/a-carta/telexornal-mediodia-fds-584354"
-    title="Telexornal Mediodía FDS">
-    <img src="/files/thumbs/tx1.jpg" alt="Telexornal Mediodía FDS" width="175" height="100"/>
-    </a>
+    <img src="/files/thumbs/IMG0788.jpg" alt="A Revista FDS" />
     </div>
-    <div id="info-programa-584354" class="listadoimagenes-info">
-    <div id="titulo-programa-584354"class="listadoimagenes-titulo">
-    <a href="/tvg/a-carta/telexornal-mediodia-fds-584354"
-    title="Telexornal Mediodía FDS">
-    Telexornal Mediodía FDS - Telexornal Mediodía FDS
-    </a>
+    <div id="info-programa-1777516" class="info-programa">
+    <div id="titulo-programa-1777516" class="listadoimagenes-titulo">
+    A Revista FDS
     </div>
-    <div id="data-programa-584354" class="listadoimagenes-data">
-    11/05/2013
+    <div class="listadoimagenes-subtitulo">
+    A Revista FDS                                       
     </div>
-    </div>
-    </li>
+    <div id="data-programa-1777516" class="entrada-blog-fecha">
+    31/01/2016
     '''
-    patron  = '<li id="programa-[^<]+'
-    patron += '<div id="imagen-programa-[^<]+'
-    patron += '<a href="([^"]+)"\s+title="([^"]+)"[^<]+'
+    patron  = '<a href="([^"]+)" title="([^"]+)"[^<]+'
+    patron += '<div id="imagen-programa[^<]+'
     patron += '<img src="([^"]+)".*?'
-    patron += '<div id="data-programa-[^"]+" class="listadoimagenes-data">(.*?)</div>'
-    matches = re.compile(patron,re.DOTALL).findall(data)
-    if DEBUG: scrapertools.printMatches(matches)
+    patron += '<div id="data-programa[^>]+>([^<]+)<'
 
-    for match in matches:
-        scrapedtitle = match[1].strip()+" "+match[3].strip()
-        scrapedurl = urlparse.urljoin(item.url,match[0])
-        scrapedthumbnail = urlparse.urljoin(item.url,match[2])
-        scrapedplot = ""
-        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
+    matches = re.compile(patron,re.DOTALL).findall(data)
+
+    for scrapedurl,scrapedtitle,scrapedthumbnail,fecha in matches:
+        title = scrapedtitle.strip()+" - "+fecha.strip()
+        url = urlparse.urljoin(item.url,scrapedurl)
+        thumbnail = urlparse.urljoin(item.url,scrapedthumbnail)
+        plot = ""
+        if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
 
         # Añade al listado de XBMC
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="tvg", url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=item.show , category = item.category , folder=False) )
+        itemlist.append( Item(channel=CHANNELNAME, title=title , action="play" , server="tvg", url=url, thumbnail=thumbnail, plot=plot , folder=False) )
 
     return itemlist
 
@@ -159,7 +149,22 @@ def programas(item):
 
     return itemlist
 
-def episodios(item):
+def detalle_programa(item):
+
+    #http://www.crtvg.es/tvg/a-carta/programa/vivir-aqui
+    #http://www.crtvg.es/tvg/programas/vivir-aqui
+    url = item.url.replace("a-carta/programa","programas")
+
+    data = scrapertools.cache_page(url)
+    
+    item.plot = scrapertools.find_single_match(data,'<meta name="description" content="([^"]+)"')
+    item.plot = scrapertools.htmlclean(item.plot).strip()
+
+    item.thumbnail = scrapertools.find_single_match(data,'<meta property="og:image" content="([^"]+)"')
+
+    return item
+
+def episodios(item, load_all_pages = False):
     logger.info("[tvg.py] episodios")
     itemlist = []
 
@@ -171,7 +176,8 @@ def episodios(item):
         headers.append(["Referer",item.url])
         data = scrapertools.cache_page(item.url, post="", headers=headers)
         data = data.replace("\\n"," ")
-        data = data.replace("\\","")
+        data = data.replace("\\\"","\"")
+        data = data.replace("\\/","/")
     else:
         data = scrapertools.cache_page(item.url)
         try:
@@ -189,27 +195,39 @@ def episodios(item):
         headers.append(["Referer",item.url])
         data = scrapertools.cache_page(url, post="", headers=headers)
         data = data.replace("\\n"," ")
-        data = data.replace("\\","")
-    logger.info("data="+data)
+        data = data.replace("\\\"","\"")
+        data = data.replace("\\/","/")
+
+    #logger.info("data="+data)
 
     # Extrae los videos
-    #<tr>                  <td class="a-carta-resultado-imagen">                      <a href="/tvg/a-carta/a-revista-fds-477893"                           title="A Revista FDS">
-    #<img src="/files/thumbs/LorenaPose.jpg" alt="A Revista FDS" width="75" height="42"/>                      </a>                                              </td>                  <td class="a-carta-resultado-titulo">                      <a href="/tvg/a-carta/a-revista-fds-477893" title="A Revista FDS">A Revista FDS</a>                 </td>                                     <td class="a-carta-resultado-data">                  02/12/2012 12:10                 </td>                              </tr>
-    patron  = '<tr[^<]+<td class="a-carta-resultado-imagen[^<]+'
-    patron += '<a href="([^"]+)"\s+title="([^"]+)"[^<]+<img src="([^"]+)".*?'
+    '''
+    <tr>                  
+    <td class="a-carta-resultado-titulo">                      
+    <a href="\/tvg\/a-carta\/rea-publica-74" title="\u00c1rea p\u00fablica">\u00c1rea p\u00fablica<\/a>                 <\/td>                                                       <td class="a-carta-resultado-tempada">                                           <\/td>                                     <td class="a-carta-resultado-data">                  26\/01\/2016 18:30                 <\/td>                              <\/tr>
+    '''
+
+    patron  = '<tr[^<]+'
+    patron += '<td class="a-carta-resultado-titulo[^<]+'
+    patron += '<a href="([^"]+)"\s+title="([^"]+)".*?'
     patron += '<td class="a-carta-resultado-data">(.*?)</td>'
     matches = re.compile(patron,re.DOTALL).findall(data)
     if DEBUG: scrapertools.printMatches(matches)
 
-    for match in matches:
-        scrapedtitle = match[1].strip()+" "+match[3].strip()
-        scrapedurl = urlparse.urljoin(item.url,match[0])
-        scrapedthumbnail = urlparse.urljoin(item.url,match[2])
-        scrapedplot = ""
-        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
+    for scrapedurl,scrapedtitle,fecha in matches:
+        title = scrapedtitle.strip()
+        json_title = jsontools.load_json('{"title":"'+title+'"}')
+        title = json_title["title"]
+        title = scrapertools.htmlclean(title)+" - "+fecha.strip()
+
+        url = urlparse.urljoin(item.url,scrapedurl)
+        thumbnail = ""
+        plot = ""
+        aired_date = scrapertools.parse_date(fecha)
+        if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
 
         # Añade al listado de XBMC
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="tvg", url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=item.show , category = item.category , folder=False) )
+        itemlist.append( Item(channel=CHANNELNAME, title=title , action="play" , server="tvg", url=url, thumbnail=thumbnail, plot=plot , show=item.show , aired_date=aired_date, folder=False) )
 
     #<a href=\"#\" title=\"Seguinte\" onclick=\"return posteriorpaginaclick(33517, 2, 294)
     patron  = '<a href="\#" title="Seguinte" onclick="return posteriorpaginaclick\((\d+), (\d+), (\d+)'
@@ -224,8 +242,35 @@ def episodios(item):
         scrapedplot = ""
         if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
 
-        # Añade al listado de XBMC
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="episodios" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=item.show , category = item.category , folder=True) )
+        next_page_item = Item(channel=CHANNELNAME, title=scrapedtitle , action="episodios" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=item.show , category = item.category , folder=True)
+        if load_all_pages:
+            itemlist.extend( episodios(next_page_item, load_all_pages) )
+        else:
+            itemlist.append( next_page_item )
+
+        break
+
+    return itemlist
+
+def detalle_episodio(item):
+
+    item.geolocked = "0"
+    
+    try:
+        from servers import tvg as servermodule
+        video_urls = servermodule.get_video_url(item.url)
+        item.media_url = video_urls[0][1]
+    except:
+        import traceback
+        print traceback.format_exc()
+        item.media_url = ""
+
+    return item
+
+def play(item):
+
+    item.server="tvg";
+    itemlist = [item]
 
     return itemlist
 

@@ -4,46 +4,77 @@
 # Funciones para hacer canales a partir de un canal de YouTube
 # http://blog.tvalacarta.info/plugin-xbmc/tvalacarta/
 #------------------------------------------------------------
-import os
-import sys
-import re
+import os,sys,re,urllib
 
 from core import logger
+from core import jsontools
 from core import scrapertools
 from core.item import Item
 
 DEBUG = True
 CHANNELNAME = "youtube_channel"
+YOUTUBE_V3_API_KEY = "AIzaSyCDwjA0G1QcPd7KobFtW39XWkUj3CEF3OY"
 
 def isGeneric():
     return True
 
+def youtube_api_call(method,parameters):
+    logger.info("youtube_api_call method="+method+", parameters="+repr(parameters))
+
+    encoded_parameters = urllib.urlencode(parameters)
+
+    url = "https://www.googleapis.com/youtube/v3/"+method+"?"+encoded_parameters+"&key="+YOUTUBE_V3_API_KEY;
+    logger.info("youtube_api_call url="+url)
+
+    data = scrapertools.cache_page(url)
+    logger.info("youtube_api_call data="+data)
+
+    json_object = jsontools.load_json(data)
+
+    return json_object
+
+def youtube_get_user_playlists(user_id,pageToken=""):
+
+    # Primero averigua el channel_id a partir del nombre del usuario
+    json_object = youtube_api_call("channels",{"part":"id","forUsername":user_id})
+    channel_id = json_object["items"][0]["id"]
+
+    # Ahora obtiene la lista de playlists del usuario
+    json_object = youtube_api_call("playlists",{"part":"snippet,contentDetails","channelId":channel_id,"maxResults":50,"pageToken":pageToken})
+
+    return json_object;
+
+def youtube_get_playlist_items(playlist_id,pageToken=""):
+
+    json_object = youtube_api_call("playlistItems",{"part":"snippet","playlistId":playlist_id,"maxResults":50,"pageToken":pageToken})
+
+    return json_object
+
 # Show all YouTube playlists for the selected channel
-def playlists(item,channel_id):
+def playlists(item,channel_id,pageToken=""):
     logger.info("youtube_channel.playlists ")
     itemlist=[]
 
-    item.url = "http://gdata.youtube.com/feeds/api/users/"+channel_id+"/playlists?v=2&start-index=1&max-results=30"
-
-    # Fetch video list from YouTube feed
-    data = scrapertools.cache_page( item.url )
-    logger.info("data="+data)
+    json_object = youtube_get_user_playlists(channel_id,pageToken)
     
-    # Extract items from feed
-    pattern = "<entry(.*?)</entry>"
-    matches = re.compile(pattern,re.DOTALL).findall(data)
-    
-    for entry in matches:
-        logger.info("entry="+entry)
+    for entry in json_object["items"]:
+        logger.info("entry="+repr(entry))
         
-        # Not the better way to parse XML, but clean and easy
-        title = scrapertools.find_single_match(entry,"<titl[^>]+>([^<]+)</title>")
-        plot = scrapertools.find_single_match(entry,"<media\:descriptio[^>]+>([^<]+)</media\:description>")
-        thumbnail = scrapertools.find_single_match(entry,"<media\:thumbnail url='([^']+)'")
-        url = scrapertools.find_single_match(entry,"<content type\='application/atom\+xml\;type\=feed' src='([^']+)'/>")
+        title = entry["snippet"]["title"]
+        plot = entry["snippet"]["description"]
+        thumbnail = entry["snippet"]["thumbnails"]["high"]["url"]
+        url = entry["id"]
 
         # Appends a new item to the xbmc item list
         itemlist.append( Item(channel=CHANNELNAME, title=title , action="videos" , url=url, thumbnail=thumbnail, plot=plot , folder=True) )
+
+    try:
+        nextPageToken = json_object["nextPageToken"]
+        itemlist.extend( playlists(item,channel_id,nextPageToken) )
+    except:
+        import traceback
+        logger.info(traceback.format_exc())
+
     return itemlist
 
 def latest_videos(item,channel_id):
@@ -51,30 +82,35 @@ def latest_videos(item,channel_id):
     return videos(item)
 
 # Show all YouTube videos for the selected playlist
-def videos(item):
+def videos(item,pageToken=""):
     logger.info("youtube_channel.videos ")
     itemlist=[]
 
-    # Fetch video list from YouTube feed
-    data = scrapertools.cache_page( item.url )
-    logger.info("data="+data)
+    json_object = youtube_get_playlist_items(item.url,pageToken)
     
-    # Extract items from feed
-    pattern = "<entry(.*?)</entry>"
-    matches = re.compile(pattern,re.DOTALL).findall(data)
-    
-    for entry in matches:
-        logger.info("entry="+entry)
+    for entry in json_object["items"]:
+        logger.info("entry="+repr(entry))
         
-        # Not the better way to parse XML, but clean and easy
-        title = scrapertools.find_single_match(entry,"<titl[^>]+>([^<]+)</title>")
-        plot = scrapertools.find_single_match(entry,"<summa[^>]+>([^<]+)</summa")
-        thumbnail = scrapertools.find_single_match(entry,"<media\:thumbnail url='([^']+)'")
-        video_id = scrapertools.find_single_match(entry,"http\://www.youtube.com/watch\?v\=([0-9A-Za-z_-]{11})")
-        url = video_id
+        title = entry["snippet"]["title"]
+        plot = entry["snippet"]["description"]
+
+        try:
+            thumbnail = entry["snippet"]["thumbnails"]["high"]["url"]
+        except:
+            thumbnail = ""
+
+        url = entry["snippet"]["resourceId"]["videoId"]
 
         # Appends a new item to the xbmc item list
         itemlist.append( Item(channel=CHANNELNAME, title=title , action="play" , server="youtube", url=url, thumbnail=thumbnail, plot=plot , folder=False) )
+
+    try:
+        nextPageToken = json_object["nextPageToken"]
+        itemlist.extend( videos(item,nextPageToken) )
+    except:
+        import traceback
+        logger.info(traceback.format_exc())
+
     return itemlist
 
 # Verificación automática de canales: Esta función debe devolver "True" si todo está ok en el canal.

@@ -64,7 +64,7 @@ def programas(item):
     patron  = '<li[^<]+'
     patron += '<a href="([^"]+)"[^<]+'
     patron += '<img src="([^"]+)"[^<]+</a[^<]+'
-    patron += '<a[^>]+>([^<]+)</a[^<]+<p><.>([^<]+)<'
+    patron += '<a[^>]+>([^<]+)</a[^<]+<p>(.*?)</li'
     matches = re.compile(patron,re.DOTALL).findall(data)
     for scrapedurl,scrapedthumbnail,scrapedtitle,scrapedplot in matches:
         title = scrapedtitle.strip()

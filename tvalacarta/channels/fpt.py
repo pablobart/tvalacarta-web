@@ -8,17 +8,16 @@
 # Desarrollo basado sobre otros canales de tvalacarta
 #------------------------------------------------------------
 
-import re
+import urlparse,re
+import urllib
 
 from core import logger
 from core import scrapertools
 from core.item import Item
 
-
 DEBUG = True
 CHANNELNAME = "fpt"
 MAIN_URL = "http://www.futbolparatodos.com.ar"
-
 
 def isGeneric():
     return True
@@ -27,16 +26,21 @@ def isGeneric():
 def mainlist(item):
     logger.info("[" + CHANNELNAME + "] mainlist")
 
+    # Descargo la página de la sección.
+    item.url = MAIN_URL
     itemlist = []
-    itemlist.append( Item(channel=CHANNELNAME, title="Clip de Apertura Torneo Inicial 2013", action="play", server="youtube", url="http://www.youtube.com/watch?v=q_D6d_6z_Wk", folder=False) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Goles"                     , action="videos", url=MAIN_URL+"/wp-content/themes/fpt2/jquery_cargar_videos.php?tipo=goles"                  , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Jugadas"                   , action="videos", url=MAIN_URL+"/wp-content/themes/fpt2/jquery_cargar_videos.php?tipo=jugadas"                , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Entrevistas"               , action="videos", url=MAIN_URL+"/wp-content/themes/fpt2/jquery_cargar_videos.php?tipo=entrevistas"            , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Homenajes"                 , action="videos", url=MAIN_URL+"/wp-content/themes/fpt2/jquery_cargar_videos.php?tipo=homenajes"              , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="El amor para toda la vida" , action="videos", url=MAIN_URL+"/wp-content/themes/fpt2/jquery_cargar_videos.php?tipo=amorparatodalavida"     , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Utilero soy"               , action="videos", url=MAIN_URL+"/wp-content/themes/fpt2/jquery_cargar_videos.php?tipo=utilerosoy"             , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="El rompecabezas del fútbol", action="videos", url=MAIN_URL+"/wp-content/themes/fpt2/jquery_cargar_videos.php?tipo=elrompecabezasdelfutbol", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Lecciones de fútbol"       , action="videos", url=MAIN_URL+"/wp-content/themes/fpt2/jquery_cargar_videos.php?tipo=lecciones-de-futbol"    , folder=True) )
+    data = scrapertools.cachePage(item.url)
+    data = scrapertools.find_single_match(data,"<h3>SECCIONES</h3>(.*?)</ul>")
+
+    patron = '<li><img[^<]+<a href="([^"]+)">([^<]+)</a></li>'
+    matches = re.compile(patron, re.DOTALL).findall(data)
+
+    for scrapedurl,scrapedtitle in matches:
+        title = scrapertools.htmlclean(scrapedtitle)
+        url = urlparse.urljoin(item.url,scrapedurl)
+        thumbnail = ""
+        plot = ""
+        itemlist.append( Item(channel=CHANNELNAME, action="videos", title=title, thumbnail=thumbnail, plot=plot, url=url) )
 
     return itemlist
 
@@ -48,10 +52,12 @@ def videos(item):
     data = scrapertools.cachePage(item.url)
     if (DEBUG): logger.info(data)
 
-    tipo = scrapertools.get_match(item.url, '\?tipo=([^&]+)')
+    tipo = scrapertools.get_match(item.url, '/seccion/(.*?)')
+    if tipo.endswith("/"):
+        tipo = tipo[0:-1]
 
     try:
-        pagina_siguiente = scrapertools.get_match(data, '<div\s+id="(\d+)" class="ultimo removerultimo".*?>\s*<br clear="all">')
+        pagina_siguiente = scrapertools.get_match(data, '<div\s+id="?(\d+)"?\s+class="ultimo removerultimo".*?>')
     except:
         pagina_siguiente = ""
     if (DEBUG): logger.info("pagina_siguiente=" + pagina_siguiente)
@@ -60,14 +66,14 @@ def videos(item):
     '''
     <li class=golitem>
     <div style="position: relative;">
-    <a href="http://www.youtube.com/embed/JL1RcXfV80g?autoplay=1" class="lbpModal cboxElement" title="Gol Carbonero. Quilmes 1 &#8211; River 1. Fecha 19. Torneo Inicial 2013.">
-    <img pagespeed_lazy_src="http://1-ps.googleusercontent.com/x/www.futbolparatodos.com.ar/img.youtube.com/vi/JL1RcXfV80g/210xNx0.jpg.pagespeed.ic.PTTKGhSOJ3.webp" width=210 alt="Gol Carbonero. Quilmes 1 &#8211; River 1. Fecha 19. Torneo Inicial 2013." src="//1-ps.googleusercontent.com/h/www.gstatic.com/psa/static/1.gif" onload="pagespeed.lazyLoadImages.loadIfVisible(this);"/>
-    <img src="/wp-content/uploads/transparent-play-player.png" width=210 style="position:absolute; z-index: 1; left: -1px;" alt=play>
+    <a href="http://www.youtube.com/embed/evylJotWAkU?autoplay=1" class="lbpModal cboxElement" title="El amor para toda la vida – Godoy Cruz – Fútbol Para Todos">
+    <img src="http://img.youtube.com/vi/evylJotWAkU/0.jpg" width=210 alt="El amor para toda la vida – Godoy Cruz – Fútbol Para Todos"/>
+    <img src="http://img.futbolparatodos.com.ar/wp-content/uploads/transparent-play-player2.png" width=210 style="position:absolute; z-index: 1; left: -1px;" alt=play class=transpa>
     </a>
     </div>
-    <div class=golitemdetalle>8/12/2013</br>
-    <a href="http://www.futbolparatodos.com.ar/2013/12/08/gol-carbonero-quilmes-1-river-1-fecha-19-torneo-inicial-2013/">Gol Carbonero. Quilmes 1 &#8211; River 1. Fecha 19. Torneo Inicial 2013.</a></br>
-    </div></li>
+    <div class=golitemdetalle>14/03/2013</br> 
+    <a href="http://www.futbolparatodos.com.ar/2013/03/14/el-amor-para-toda-la-vida-godoy-cruz-futbol-para-todos/">El amor para toda la vida – Godoy Cruz – Fútbol Para Todos</a>
+    </br></div></li>
     '''
     patron  = '<li\s*class[^<]+'
     patron += '<div\s*style="position: relative[^<]+'

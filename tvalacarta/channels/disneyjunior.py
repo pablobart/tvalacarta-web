@@ -14,6 +14,8 @@ from core import config
 from core import scrapertools
 from core.item import Item
 
+import youtube_channel
+
 DEBUG = True
 CHANNELNAME = "disneyjunior"
 
@@ -25,11 +27,11 @@ def mainlist(item):
     logger.info("disneyjunior.main_list")
     itemlist=[]
 
-    itemlist.append( Item(channel=CHANNELNAME, title="Web oficial" , action="disneyweb" , url="http://www.disney.es/disney-junior/contenido/video.jsp", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Canal YouTube (ES)" , action="youtube_playlists" , url="http://gdata.youtube.com/feeds/api/users/DisneyJuniorES/playlists?v=2&start-index=1&max-results=30", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Canal YouTube (LA)" , action="youtube_playlists" , url="http://gdata.youtube.com/feeds/api/users/DisneyJuniorLA/playlists?v=2&start-index=1&max-results=30", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Canal YouTube (UK)" , action="youtube_playlists" , url="http://gdata.youtube.com/feeds/api/users/DisneyJuniorUK/playlists?v=2&start-index=1&max-results=30", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Canal YouTube (FR)" , action="youtube_playlists" , url="http://gdata.youtube.com/feeds/api/users/DisneyJuniorFR/playlists?v=2&start-index=1&max-results=30", folder=True) )
+    #itemlist.append( Item(channel=CHANNELNAME, title="Web oficial" , action="disneyweb" , url="http://www.disney.es/disney-junior/contenido/video.jsp", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Canal YouTube (ES)" , action="youtube_playlists" , url="DisneyJuniorES", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Canal YouTube (LA)" , action="youtube_playlists" , url="DisneyJuniorLA", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Canal YouTube (UK)" , action="youtube_playlists" , url="DisneyJuniorUK", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Canal YouTube (FR)" , action="youtube_playlists" , url="DisneyJuniorFR", folder=True) )
 
     return itemlist
 
@@ -103,62 +105,7 @@ def play(item):
 
 # Show all YouTube playlists for the selected channel
 def youtube_playlists(item):
-    logger.info("disneyjunior.youtube_playlists ")
-    itemlist=[]
-
-    # Fetch video list from YouTube feed
-    data = scrapertools.cache_page( item.url )
-    logger.info("data="+data)
-    
-    # Extract items from feed
-    pattern = "<entry(.*?)</entry>"
-    matches = re.compile(pattern,re.DOTALL).findall(data)
-    
-    for entry in matches:
-        logger.info("entry="+entry)
-        
-        # Not the better way to parse XML, but clean and easy
-        title = scrapertools.find_single_match(entry,"<titl[^>]+>([^<]+)</title>")
-        plot = scrapertools.find_single_match(entry,"<media\:descriptio[^>]+>([^<]+)</media\:description>")
-        thumbnail = scrapertools.find_single_match(entry,"<media\:thumbnail url='([^']+)'")
-        url = scrapertools.find_single_match(entry,"<content type\='application/atom\+xml\;type\=feed' src='([^']+)'/>")
-
-        # Appends a new item to the xbmc item list
-        itemlist.append( Item(channel=CHANNELNAME, title=title , action="youtube_videos" , url=url, thumbnail=thumbnail, plot=plot , folder=True) )
-    return itemlist
-
-# Show all YouTube videos for the selected playlist
-def youtube_videos(item):
-    logger.info("disneyjunior.youtube_videos ")
-    itemlist=[]
-
-    # Fetch video list from YouTube feed
-    data = scrapertools.cache_page( item.url )
-    logger.info("data="+data)
-    
-    # Extract items from feed
-    pattern = "<entry(.*?)</entry>"
-    matches = re.compile(pattern,re.DOTALL).findall(data)
-    
-    for entry in matches:
-        logger.info("entry="+entry)
-        
-        # Not the better way to parse XML, but clean and easy
-        title = scrapertools.find_single_match(entry,"<titl[^>]+>([^<]+)</title>")
-        title = title.replace("Disney Junior España | ","")
-        plot = scrapertools.find_single_match(entry,"<summa[^>]+>([^<]+)</summa")
-        thumbnail = scrapertools.find_single_match(entry,"<media\:thumbnail url='([^']+)'")
-        video_id = scrapertools.find_single_match(entry,"http\://www.youtube.com/watch\?v\=([0-9A-Za-z_-]{11})")
-        url = video_id
-
-        # Appends a new item to the xbmc item list
-        itemlist.append( Item(channel=CHANNELNAME, title=title , action="play" , server="youtube", url=url, thumbnail=thumbnail, plot=plot , folder=False) )
-
-    if (config.get_platform().startswith("xbmc") or config.get_platform().startswith("boxee")) and len(itemlist)>0:
-        itemlist.append( Item(channel=item.channel, title=">> Opciones para esta serie", url=item.url, action="serie_options##youtube_videos", thumbnail=item.thumbnail, show=item.title, folder=False))
-
-    return itemlist
-
+    return youtube_channel.playlists(item,item.url)
 
 # Verificación automática de canales: Esta función debe devolver "True" si todo está ok en el canal.
 def test():

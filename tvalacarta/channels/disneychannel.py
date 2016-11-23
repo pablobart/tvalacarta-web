@@ -10,6 +10,7 @@ import urllib
 from core import logger
 from core import config
 from core import scrapertools
+from core import jsontools
 from core.item import Item
 
 DEBUG = False
@@ -21,131 +22,107 @@ def isGeneric():
 
 def mainlist(item):
     logger.info("tvalacarta.channels.disneychannel mainlist")
-    return series(item)
+    return programas(item)
 
-def series(item):
-    logger.info("tvalacarta.channels.disneychannel series")
+def programas(item):
+    logger.info("tvalacarta.channels.disneychannel programas")
     
     # Descarga la página
     item.url = MAIN_URL
     data = scrapertools.cache_page(item.url)
     #logger.info(data)
 
-    # Extrae las entradas (series)
-    '''
-    <li>
-    <a class="thumb" href="http://replay.disneychannel.es/ant-farm-escuela-de-talentos/"><img src="/static/images/thSerie160_Serie_12.png" alt="A.N.T. FARM. Escuela de talentos" /></a>
-    <div class="data">
-    <h3><a href="http://replay.disneychannel.es/ant-farm-escuela-de-talentos/">A.N.T. FARM. Escuela de talentos</a></h3>
-    '''
-    patron  = '<li>[^<]+'
-    patron += '<a class="thumb" href="([^"]+)"><img src="([^"]+)" alt="([^"]+)" /></a>'
-    matches = re.compile(patron,re.DOTALL).findall(data)
-    #if DEBUG: scrapertools.printMatches(matches)
+    data = scrapertools.find_single_match(data,'Grill.burger\=(.*?)\:\(function\(\)')
+    #logger.info("data="+repr(data))
+    data_json = jsontools.load_json(data)
+    #logger.info("data_json="+repr(data_json))
 
     itemlist = []
-    for url,thumbnail,title in matches:
-        scrapedtitle = title
-        scrapedurl = urlparse.urljoin(item.url,url)
-        scrapedthumbnail = urlparse.urljoin(item.url,thumbnail)
-        scrapedplot = ""
-        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
+    for bloque in data_json["stack"]:
+        if bloque["view"]=="stream":
 
-        # Añade al listado
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="episodios" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=scrapedtitle, folder=True) )
+            for entry in bloque["data"]:
+
+                if entry["type"]=="Show":
+                    logger.info("entry="+repr(entry))
+
+                    scrapedtitle = entry["title"]
+                    scrapedurl = entry["href"]
+                    scrapedthumbnail = entry["thumb"]
+
+                    if "description" in entry:
+                        scrapedplot = entry["description"]
+                    else:
+                        scrapedplot = ""
+                    if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
+
+                    # Añade al listado
+                    itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="episodios" , url=scrapedurl, thumbnail=scrapedthumbnail, fanart=scrapedthumbnail, plot=scrapedplot , show=scrapedtitle, viewmode="movie_with_plot", folder=True) )
 
     return itemlist
+
+def detalle_episodio(item):
+
+    data = scrapertools.cache_page(item.url)
+
+    item.plot = scrapertools.find_single_match(data,'<meta name="description" content="([^"]+)">')
+    item.thumbnail = scrapertools.find_single_match(data,'<meta property="og:image" content="([^"]+)">')
+
+    try:
+        item.duration = parse_duration_secs(scrapertools.find_single_match(data,'<meta property="video:duration" content="([^"]+)">'))
+    except:
+        item.duration = ""
+
+    item.geolocked = "1"
+
+    '''
+    try:
+        from servers import aragontv as servermodule
+        video_urls = servermodule.get_video_url(item.url)
+        item.media_url = video_urls[0][1]
+    except:
+        import traceback
+        print traceback.format_exc()
+        item.media_url = ""
+    '''
+
+    return item
 
 def episodios(item):
     logger.info("tvalacarta.channels.disneychannel episodios")
-    
-    # Descarga la página
-    data = scrapertools.cachePage(item.url)
-    #logger.info(data)
-
-    # episodios
-    '''
-    <li class="video">
-    <a class="thumb" href="/pecezuelos/diversion-en-pupu-buenosratos.html"><img alt="Pez fuera del agua" src="/clipping/2011/11/29/00018/7.jpg"></a>								
-    <div class="data">
-    <div class="duration"></div>
-    <h3><a href="/pecezuelos/diversion-en-pupu-buenosratos.html">Diversión en Pupu Buenosratos</a></h3>
-    <div class="likes"><span class="invisible">Gusta a </span>42</div>
-    </div>
-    <a class="play" href="" style="z-index: -1; visibility: visible;"></a>
-    </li>
-    '''
-    patron  = '<li class="video">[^<]+'
-    patron += '<a class="thumb" href="([^"]+)"><img alt="[^"]+" src="([^"]+)"></a>[^<]+'
-    patron += '<div class="data">[^<]+'
-    patron += '<div class="duration[^<]+</div>[^<]+'
-    patron += '<h3><a[^>]+>([^<]+)</a></h3>'
-    matches = re.compile(patron,re.DOTALL).findall(data)
-    #if DEBUG: scrapertools.printMatches(matches)
-
     itemlist = []
-    for url,thumbnail,title in matches:
-        scrapedtitle = title
-        scrapedurl = urlparse.urljoin(item.url,url)
-        scrapedthumbnail = urlparse.urljoin(item.url,thumbnail)
-        scrapedplot = ""
-        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
 
-        # Añade al listado
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="disneychannel", url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=item.show , folder=False) )
+    try:
+        data = scrapertools.cachePage(item.url)
+        #logger.info("data="+repr(data))
 
-    if (config.get_platform().startswith("xbmc") or config.get_platform().startswith("boxee")) and len(itemlist)>0:
-        itemlist.append( Item(channel=item.channel, title=">> Opciones para esta serie", url=item.url, action="serie_options##episodios", thumbnail=item.thumbnail, show=item.show, folder=False))
+        #data = scrapertools.find_single_match(data,'Grill.burger\=(.*?)\:\(function\(\)')
+        # Limpia el json incorrecto
+        #data = "{"+scrapertools.find_single_match(data,'("title"\:"Episodios completos","data"\:\[.*?)\,"config_options"')+"}"
+        
+        data = scrapertools.find_single_match(data,'(\{"view"\:"slider".*?\}),\{"view"')
+        data_json = jsontools.load_json(data)
+        #logger.info("data_json="+repr(data_json))
 
-    return itemlist
+        for video in data_json["data"]:
+            logger.info("video="+repr(video))
 
-def partes(item):
-    logger.info("tvalacarta.channels.disneychannel partes")
-    
-    # Descarga la página
-    data = scrapertools.cachePage(item.url)
-    #logger.info(data)
-
-    # episodios
-    '''
-    <li class="video">
-    <a class="thumb" href="/pecezuelos/diversion-en-pupu-buenosratos.html"><img alt="Pez fuera del agua" src="/clipping/2011/11/29/00018/7.jpg"></a>                                
-    <div class="data">
-    <div class="duration"></div>
-    <h3><a href="/pecezuelos/diversion-en-pupu-buenosratos.html">Diversión en Pupu Buenosratos</a></h3>
-    <div class="likes"><span class="invisible">Gusta a </span>42</div>
-    </div>
-    <a class="play" href="" style="z-index: -1; visibility: visible;"></a>
-    </li>
-    '''
-    patron  = '<li class="video">[^<]+'
-    patron += '<a class="thumb" href="([^"]+)"><img alt="[^"]+" src="([^"]+)"></a>[^<]+'
-    patron += '<div class="data">[^<]+'
-    patron += '<div class="duration[^<]+</div>[^<]+'
-    patron += '<h3><a[^>]+>([^<]+)</a></h3>'
-    matches = re.compile(patron,re.DOTALL).findall(data)
-    #if DEBUG: scrapertools.printMatches(matches)
-
-    itemlist = []
-    for url,thumbnail,title in matches:
-        scrapedtitle = title
-        scrapedurl = urlparse.urljoin(item.url,url)
-        scrapedthumbnail = urlparse.urljoin(item.url,thumbnail)
-        scrapedplot = ""
-        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
-
-        # Añade al listado
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=item.show , folder=False) )
+            title = video["title"]+" ("+video["duration"]+")"
+            url = video["href"]
+            thumbnail = video["thumb"]
+            plot = video["description"]
+            itemlist.append( Item(channel=CHANNELNAME, action="play", server="disneychannel", title=title, url=url, thumbnail=thumbnail, plot=plot, show=item.show, folder=False) )
+    except:
+        import traceback
+        logger.info(traceback.format_exc())
 
     return itemlist
 
 def play(item):
-    #data = scrapertools.cache_page("http://web.pydowntv.com/api?url="+item.url)
-    #url = scrapertools.get_match(data,'"url_video"\: \["([^"]+)"\]')
-    data = scrapertools.cache_page("http://www.descargavideos.tv/?web="+item.url)
-    url = scrapertools.get_match(data,'linkHtml.*?\'(.*?)\',')
-    itemlist=[]
-    itemlist.append( Item(channel=item.channel, action="play", title=item.title, url=url, thumbnail=item.thumbnail, plot=item.plot, category=item.category, show=item.show, folder=False ))
+
+    item.server="disneychannel";
+    itemlist = [item]
+
     return itemlist
 
 # Verificación automática de canales: Esta función debe devolver "True" si todo está ok en el canal.

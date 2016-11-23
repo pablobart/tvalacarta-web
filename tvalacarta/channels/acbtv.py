@@ -10,9 +10,10 @@ import os
 
 from core import logger
 from core import scrapertools
+from core import config
 from core.item import Item
 
-DEBUG = False
+DEBUG = config.get_setting("debug")
 CHANNELNAME = "acbtv"
 MAIN_URL = "http://acbtv.acb.com/"
 
@@ -21,6 +22,7 @@ def isGeneric():
 
 def mainlist(item):
     logger.info("tvalacarta.channels.acbtv.mainlist")
+    item.view="thumbnails"
     return programas(item)
 
 def programas(item):

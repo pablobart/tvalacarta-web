@@ -136,7 +136,7 @@ def lista_videos(item):
             Duration = item2['Duration']
             itemlist.append( Item(channel=__channel__, action="play", title=title , url=url , thumbnail=thumbnail , fanart=thumbnail, plot=plot , show=item.show, viewmode="movie_with_plot", folder=True) )
 
-    if item.extra=="television" and (config.get_platform().startswith("xbmc") or config.get_platform().startswith("boxee")) and len(itemlist)>0:
+    if item.extra=="television" and config.is_xbmc() and len(itemlist)>0:
         itemlist.append( Item(channel=item.channel, title=">> Opciones para esta serie", url=item.url, action="serie_options##lista_videos", thumbnail=item.thumbnail, extra = item.extra , show=item.show, folder=False))
 
     return itemlist

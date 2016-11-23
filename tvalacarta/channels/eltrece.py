@@ -47,22 +47,12 @@ def programas(item):
     itemlist=[]
 
     '''
-    <article  about="/la-noche-de-mirtha" typeof="sioc:Item foaf:Document" class="ds-1col node node--temporada-entretenimiento node--promoted view-mode-c13_temporada node--c13-temporada node--temporada-entretenimiento--c13-temporada clearfix">
-        <figure data-desktop="298x168" data-tabletlandscape="298x168" data-tabletportrait="298x168" data-mobilelandscape="298x168" data-mobileportrait="298x168" alt="La noche de Mirtha" data-width="298" data-height="168" data-timestamp="1421945347"  data-uri="public://la_noche_de_mirtha.jpg" class="field field--name-field-image field--type-image field--label-hidden" >
-            <a href="/la-noche-de-mirtha" data-pagetype="temporada_entretenimiento">
-            <noscript>
-            <img src='public://styles/298x168/public/la_noche_de_mirtha.jpg?t=1421945347' width='298' height='168' alt='La noche de Mirtha' />
-            </noscript>
-            </a>
-            <figcaption></figcaption>
-        </figure>
-        <h2><a href="/la-noche-de-mirtha">La noche de Mirtha</a></h2>
-        <div class="field field--name-c13-custom-field-horarios field--type-ds field--label-hidden">
-        <div class="field__items">
-        <div class="field__item even">
-        <p class='horarios'><span class='icon-horarios'></span>Sáb de 22:00hs a 00:15hs</p>
-        </div></div></div>
-    </article>
+    article about="/mdq-para-todo-el-mundo" typeof="sioc:Item foaf:Document" class="ds-1col node node--temporada-entretenimiento node--promoted view-mode-c13_temporada node--c13-temporada node--temporada-entretenimiento--c13-temporada clearfix"> 
+    <figure data-desktop="298x168" data-tabletlandscape="298x168" data-tabletportrait="298x168" data-mobilelandscape="298x168" data-mobileportrait="298x168" alt="MDQ Para todo el mundo" data-width="298" data-height="168" data-timestamp="1452282632" data-entityid="83444" data-uri="public://2016/01/08/mdq.jpg" class="field field--name-field-image field--type-image field--label-hidden " >
+    <a href="/mdq-para-todo-el-mundo" data-pagetype="temporada_entretenimiento">
+    <noscript><img src='http://eltrecetv.cdncmd.com/sites/default/files/styles/298x168/public/2016/01/08/mdq.jpg?t=1452282632' width='298' height='168' alt='MDQ Para todo el mundo' /></noscript>
+    </a><figcaption></figcaption></figure><h2><a href="/mdq-para-todo-el-mundo">MDQ Para todo el mundo</a></h2><div class="field field--name-c13-custom-field-horarios field--type-ds field--label-hidden"><div class="field__items"><div class="field__item even"><p class='horarios'><span class='icon-horarios'></span>Dom de 22:00hs a 23:00hs</p></div></div></div>
+
     '''
 
     # Descarga la página
@@ -78,8 +68,7 @@ def programas(item):
         url = scrapertools.find_single_match(match,'<h2><a href="([^"]+)">')
         url = urlparse.urljoin(item.url,url)
 
-        thumbnail = scrapertools.find_single_match(match,'<img src=\'public\:\/\/([^"]+)"')
-        thumbnail = "http://eltrecetv.cdncmd.com/sites/default/files/styles/298x168/public/"+thumbnail
+        thumbnail = scrapertools.find_single_match(match,'<img src=\'([^"]+)"')
         plot = ""
         if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
 

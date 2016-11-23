@@ -25,11 +25,44 @@ def mainlist(item):
     itemlist = []
     
     # El primer nivel de menú es un listado por canales
+    itemlist.append( Item(channel=CHANNELNAME, title="Directos"          , action="loadlives", folder=True))
     itemlist.append( Item(channel=CHANNELNAME, title="Todas las cadenas" , action="canal" , thumbnail = "" , url="http://www.rtve.es/alacarta/tve/", extra="tve"))
     itemlist.append( Item(channel=CHANNELNAME, title="La 1"              , action="canal" , thumbnail = "" , url="http://www.rtve.es/alacarta/tve/la1/", extra="la1"))
     itemlist.append( Item(channel=CHANNELNAME, title="La 2"              , action="canal" , thumbnail = "" , url="http://www.rtve.es/alacarta/tve/la2/", extra="la2"))
     itemlist.append( Item(channel=CHANNELNAME, title="Canal 24 horas"    , action="canal" , thumbnail = "" , url="http://www.rtve.es/alacarta/tve/24-horas/", extra="24-horas"))
     itemlist.append( Item(channel=CHANNELNAME, title="Teledeporte"       , action="canal" , thumbnail = "" , url="http://www.rtve.es/alacarta/tve/teledeporte/", extra="teledeporte"))
+
+    return itemlist
+
+def loadlives(item):
+    logger.info("tvalacarta.channels.rtve play loadlives")
+
+    itemlist = []
+
+    url_la1 = "rtmp://rtvegeofs.fplive.net:1935/rtvegeoargmex-live-live/RTVE_LA1_LV3_WEB_GL7 swfUrl=http://swf.rtve.es/swf/4.3.13/RTVEPlayerVideo.swf pageUrl=http://www.rtve.es/directo/la-1/ live=true swfVfy=true"
+    url_la2 = "rtmp://rtvefs.fplive.net:1935/rtve-live-live/RTVE_LA2_LV3_WEB_GL0 swfUrl=http://swf.rtve.es/swf/4.3.13/RTVEPlayerVideo.swf pageUrl=http://www.rtve.es/directo/la-2/ live=true swfVfy=true"
+    url_tld = "rtmp://rtvegeofs.fplive.net:1935/rtvegeo-live-live/RTVE_TDP_LV3_WEB_GL1 swfUrl=http://swf.rtve.es/swf/4.3.13/RTVEPlayerVideo.swf pageUrl=http://www.rtve.es/directo/teledeporte/ live=true swfVfy=true"
+    url_24h = "rtmp://rtvefs.fplive.net:443/rtve2-live-live/RTVE_24H_LV3_WEB_GL8 swfUrl=http://swf.rtve.es/swf/4.3.13/RTVEPlayerVideo.swf pageUrl=http://www.rtve.es/directo/canal-24h/ live=true swfVfy=true"
+    # Radio
+    url_rne = "http://radio1-fme.rtve.stream.flumotion.com/rtve/radio1.mp3.m3u"
+    url_cls = "http://radioclasica-fme.rtve.stream.flumotion.com/rtve/radioclasica.mp3.m3u"
+    url_rd3 = "http://radio3-fme.rtve.stream.flumotion.com/rtve/radio3.mp3.m3u"
+    url_rd4 = "http://radio4-fme.rtve.stream.flumotion.com/rtve/radio4.mp3.m3u"
+    url_rd5 = "http://radio5-fme.rtve.stream.flumotion.com/rtve/radio5.mp3.m3u"
+    url_rex = "http://radioexterior-fme.rtve.stream.flumotion.com/rtve/radioexterior.mp3.m3u"
+
+    itemlist.append( Item(channel=CHANNELNAME, title="La 1",        action="play", url=url_la1, folder=False) )
+    itemlist.append( Item(channel=CHANNELNAME, title="La 2",        action="play", url=url_la2, folder=False) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Teledeporte", action="play", url=url_tld, folder=False) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Canal 24H",   action="play", url=url_24h, folder=False) )
+
+    # Radio
+    itemlist.append( Item(channel=CHANNELNAME, title="Radio: Radio Nacional", action="play", url=url_rne, folder=False) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Radio: Radio Clásica",  action="play", url=url_cls, folder=False) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Radio: Radio 3",        action="play", url=url_rd3, folder=False) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Radio: Radio 4",        action="play", url=url_rd4, folder=False) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Radio: Radio 5",        action="play", url=url_rd5, folder=False) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Radio: Radio Exterior", action="play", url=url_rex, folder=False) )
 
     return itemlist
 
@@ -205,9 +238,22 @@ def episodios(item):
         # La URL de los vídeos de un programa es
         # http://www.rtve.es/alacarta/interno/contenttable.shtml?ctx=42610&pageSize=20&pbq=1
         item.url = "http://www.rtve.es/alacarta/interno/contenttable.shtml?ctx="+item.extra+"&pageSize=20&pbq=1"
-    data = scrapertools.cachePage(item.url)
+
+    itemlist = get_episodios(item,1)
+    if len(itemlist)==0:
+        itemlist = get_episodios_documentales(item,1)
+
+    if len(itemlist)>0:
+        if config.is_xbmc() and len(itemlist)>0:
+            itemlist.append( Item(channel=item.channel, title=">> Opciones para esta serie", url=item.url, action="serie_options##episodios", thumbnail=item.thumbnail, extra = item.extra , show=item.show, folder=False))
+
+    return itemlist
+
+def get_episodios(item,recursion):
+    logger.info("[rtve.py] get_episodios_documentales")
 
     itemlist = []
+    data = scrapertools.cachePage(item.url)
 
     # Extrae los vídeos
     '''
@@ -260,58 +306,135 @@ def episodios(item):
         if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
         itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="rtve" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show=item.show, category = item.category, extra=scrapedextra, folder=False) )
 
+    # Paginación
+
     if len(itemlist)>0:
-        # Extrae la paginación
-        patron = '<a name="paginaIR" href="([^"]+)"><span>Siguiente</span></a>'
-        matches = re.findall(patron,data,re.DOTALL)
-        if DEBUG: scrapertools.printMatches(matches)
-
-        # Crea una lista con las entradas
-        for match in matches:
-            scrapedtitle = "!Página siguiente"
-            scrapedurl = urlparse.urljoin(item.url,match).replace("&amp;","&")
-            #http://www.rtve.es/alacarta/interno/contenttable.shtml?pbq=2&modl=TOC&locale=es&pageSize=15&ctx=36850&advSearchOpen=false
-            if not scrapedurl.endswith("&advSearchOpen=false"):
-                scrapedurl = scrapedurl + "&advSearchOpen=false"
-            scrapedthumbnail = ""
-            scrapedplot = ""
-            scrapedextra = item.extra
-            if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
-            itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="episodios" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , extra = scrapedextra, category = item.category, show=item.show) )
-
-        if (config.get_platform().startswith("xbmc") or config.get_platform().startswith("boxee")) and len(itemlist)>0:
-            itemlist.append( Item(channel=item.channel, title=">> Opciones para esta serie", url=item.url, action="serie_options##episodios", thumbnail=item.thumbnail, extra = item.extra , show=item.show, folder=False))
-
-    else:
-
-        # Extrae los vídeos
-        patron  = '<div class="mark"[^<]+'
-        patron += '<a href="([^"]+)" title="([^"]+)"[^<]+'
-        patron += '<span class="[^<]+'
-        patron += '<img src="([^"]+)".*?'
-        patron += '<div class="apiCall summary"[^<]+'
-        patron += '<p[^<]+'
-        patron += '<span class="time">([^<]+)</span[^<]+'
-        patron += '<span class="date">([^<]+)</span>([^<]+)<'
         
-        matches = re.findall(patron,data,re.DOTALL)
-        if DEBUG: scrapertools.printMatches(matches)
+        next_page_url = scrapertools.find_single_match(data,'<a name="paginaIR" href="([^"]+)"><span>Siguiente</span></a>')
+        if next_page_url!="":
+            next_page_url = urlparse.urljoin(item.url,next_page_url).replace("&amp;","&")
+            #http://www.rtve.es/alacarta/interno/contenttable.shtml?pbq=2&modl=TOC&locale=es&pageSize=15&ctx=36850&advSearchOpen=false
+            if not next_page_url.endswith("&advSearchOpen=false"):
+                next_page_url = next_page_url + "&advSearchOpen=false"
 
-        # Crea una lista con las entradas
-        for scrapedurl,scrapedtitle,scrapedthumbnail,duracion,fecha,plot in matches:
-            title = scrapedtitle+" ("+duracion+")("+fecha+")"
-            url = urlparse.urljoin(item.url,scrapedurl)
-            plot = plot
-            thumbnail = scrapedthumbnail
-            
-            if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
-            itemlist.append( Item(channel=CHANNELNAME, title=title , action="play" , server="rtve" , url=url, thumbnail=thumbnail, plot=plot , show=item.show, category = item.category, fanart=thumbnail, viewmode="movie_with_plot", folder=False) )
+            siguiente_item = Item(channel=CHANNELNAME,action="episodios",url=urlparse.urljoin(item.url,next_page_url),title=item.title,show=item.show,category=item.category)
+            logger.info("siguiente_item="+siguiente_item.tostring())
 
-        if (config.get_platform().startswith("xbmc") or config.get_platform().startswith("boxee")) and len(itemlist)>0:
-            itemlist.append( Item(channel=item.channel, title=">> Opciones para esta serie", url=item.url, action="serie_options##episodios", thumbnail=item.thumbnail, extra = item.extra , show=item.show, folder=False))
+            # Para evitar listas eternas, si tiene más de 3 páginas añade el item de "siguiente"
+            if recursion<=3:
+                itemlist.extend( get_episodios(siguiente_item,recursion+1) )
+            else:
+                siguiente_item.title=">> Página siguiente"
+                itemlist.append(siguiente_item)
 
     return itemlist
 
+def get_episodios_documentales(item,recursion):
+    logger.info("[rtve.py] get_episodios_documentales")
+
+    itemlist = []
+    data = scrapertools.cachePage(item.url)
+
+    # Cabecera
+    '''
+    <div class="mark">
+    <a title="Valencia" href="http://www.rtve.es/alacarta/videos/a-vista-de-pajaro/vista-pajaro-valencia/3165763/" alt="Valencia">
+    <span class="ima f16x9 T">
+    <img src="http://img.irtve.es/v/3165763/?w=800&amp;h=451&amp;crop=si"></span>
+    <span class="textBox mantitle">Valencia</span>
+    </a>
+    <span class="textBox">
+    <span class="hourdata">27:50</span>
+    <span class="separata"> </span>
+    <span class="datedata">17 junio 2015</span>
+    </span>
+    <div class="textBox descript">
+    <p><P>Programa que recorre desde el cielo las tierras de la provincia de Valencia.</P></p>
+    <p></p>
+    </div>
+    </div>
+    '''
+    patron  = '<div class="mark"[^<]+'
+    patron += '<a title="([^"]+)" href="([^"]+)"[^<]+'
+    patron += '<span class="[^<]+'
+    patron += '<img src="([^"]+)".*?'
+    patron += '<span class="hourdata">([^<]+)</span[^<]+'
+    patron += '<span class="separata[^<]+</span[^<]+'
+    patron += '<span class="datedata">([^<]+)</span>(.*?)</div'
+    
+    matches = re.findall(patron,data,re.DOTALL)
+    if DEBUG: scrapertools.printMatches(matches)
+    primera_url = ""
+
+    # Crea una lista con las entradas
+    for scrapedtitle,scrapedurl,scrapedthumbnail,duracion,fecha,plot in matches:
+        title = scrapedtitle+" ("+duracion+")("+fecha+")"
+        url = urlparse.urljoin(item.url,scrapedurl)
+        primera_url = url
+        plot = scrapertools.htmlclean(plot).strip()
+        thumbnail = scrapedthumbnail
+        
+        if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
+        itemlist.append( Item(channel=CHANNELNAME, title=title , action="play" , server="rtve" , url=url, thumbnail=thumbnail, plot=plot , show=item.show, category = item.category, fanart=thumbnail, viewmode="movie_with_plot", folder=False) )
+
+    # Items
+    '''
+    <div class="mark">
+    <a href="/alacarta/videos/a-vista-de-pajaro/vista-pajaro-via-plata/2990389/" title="La Vía de la Plata">
+    <span class="ima f16x9 T">
+    <img src="http://img.rtve.es/v/2990389/?w=300&h=200&crop=no" alt="La Vía de la Plata">
+    </span>
+    <div class="apiCall mainTiTle">
+    <h3><span>La Vía de la Plata</span></h3>
+    </div>
+    </a>
+    <div class="apiCall data">
+    <span class="time">27:37</span>
+    <span class="date">22 sep 1991</span>
+    </div>
+    </div>
+    '''
+    patron  = '<div class="mark"[^<]+'
+    patron += '<a href="([^"]+)" title="([^"]+)"[^<]+'
+    patron += '<span class="[^<]+'
+    patron += '<img src="([^"]+)".*?'
+    patron += '<div class="apiCall summary"[^<]+'
+    patron += '<p[^<]+'
+    patron += '<span class="time">([^<]+)</span[^<]+'
+    patron += '<span class="date">([^<]+)</span>([^<]+)<'
+    
+    matches = re.findall(patron,data,re.DOTALL)
+    if DEBUG: scrapertools.printMatches(matches)
+
+    # Crea una lista con las entradas
+    for scrapedurl,scrapedtitle,scrapedthumbnail,duracion,fecha,plot in matches:
+        title = scrapedtitle+" ("+duracion+")("+fecha+")"
+        url = urlparse.urljoin(item.url,scrapedurl)
+
+        # A veces el vídeo de cabecera se repite en los items
+        if url==primera_url:
+            continue
+        plot = plot.strip()
+        thumbnail = scrapedthumbnail
+        
+        if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
+        itemlist.append( Item(channel=CHANNELNAME, title=title , action="play" , server="rtve" , url=url, thumbnail=thumbnail, plot=plot , show=item.show, category = item.category, fanart=thumbnail, viewmode="movie_with_plot", folder=False) )
+
+    # Paginación
+
+    if len(itemlist)>0:
+        next_page_url = scrapertools.find_single_match(data,'<a title="Ver m[^"]+" href="([^"]+)"')
+        if next_page_url!="":
+            siguiente_item = Item(channel=CHANNELNAME,action="episodios",url=urlparse.urljoin(item.url,next_page_url),title=item.title,show=item.show,category=item.category)
+            logger.info("siguiente_item="+siguiente_item.tostring())
+            # Para evitar listas eternas, si tiene más de 3 páginas añade el item de "siguiente"
+            if recursion<=3:
+                itemlist.extend( get_episodios_documentales(siguiente_item,recursion+1) )
+            else:
+                siguiente_item.title=">> Página siguiente"
+                itemlist.append(siguiente_item)
+
+    return itemlist
 
 # Verificación automática de canales: Esta función debe devolver "True" si todo está ok en el canal.
 def test():

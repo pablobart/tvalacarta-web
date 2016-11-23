@@ -13,6 +13,7 @@ from core.item import Item
 
 DEBUG = False
 CHANNELNAME = "xiptv"
+PROGRAMAS_URL = "http://www.xiptv.cat/programes"
 
 def isGeneric():
     return True
@@ -22,7 +23,7 @@ def mainlist(item):
     itemlist=[]
     itemlist.append( Item( channel=CHANNELNAME , title="Últimos vídeos añadidos"  , action="episodios" , url="http://www.xiptv.cat/capitols" , folder=True) )
     itemlist.append( Item( channel=CHANNELNAME , title="Televisiones locales"     , action="cadenas" , url="http://www.xiptv.cat" ))
-    itemlist.append( Item( channel=CHANNELNAME , title="Todos los programas"      , action="programas" , url="http://www.xiptv.cat/programes" ))
+    itemlist.append( Item( channel=CHANNELNAME , title="Todos los programas"      , action="programas" , url=PROGRAMAS_URL ))
     itemlist.append( Item( channel=CHANNELNAME , title="Programas por categorías" , action="categorias" , url="http://www.xiptv.cat/programes" ))
     return itemlist
 
@@ -76,53 +77,56 @@ def categorias(item):
 
     return itemlist
 
-def programas(item):
+def programas(item, load_all_pages=False):
     logger.info("tvalacarta.channels.xiptv programas")
     itemlist=[]
+
+    if item.url=="":
+        item.url=PROGRAMAS_URL
     
     # Extrae los programas
     data = scrapertools.cache_page(item.url)
+    data = scrapertools.find_single_match(data,'(<li[^<]+<div class="item">.*?<div class="pager">.*?</div>)')
     '''
     <li>
     <div class="item">
     <div class="image drop-shadow curved curved-hz-1">
-    <a href="/diaridelamusica-com"><img alt="Diari-de-la-musica" src="/media/asset_publics/resources/000/067/941/program/diari-de-la-musica.jpg?1321662172" /></a>
+    <a href="/sex-toy-ficcions"><img alt="Frame_sex_toy_ficcions" src="/media/asset_publics/resources
+    /000/106/321/program/FRAME_SEX_TOY_FICCIONS.JPG?1350386776" /></a>
     </div>
+    <div class="archived"><em>Històric</em></div>
     <div class="content">
-    <h4><a href="/diaridelamusica-com">Diaridelamúsica.com</a></h4>
+    <h4><a href="/sex-toy-ficcions">Sex Toy Ficcions</a></h4>
     <h5>
-    <a href="/programes?model_type=Program&amp;program%5Bprogram_categories%5D=Cultura">Cultura</a>
+    <a href="/programes/page/10?model_type=Program&amp;program%5Bprogram_categories%5D=Nous+formats"
+    >Nous formats</a>
     </h5>
-    <p>Diaridelamusica.com, dóna tota la informació sobre l'estat de l'escena musical al país. És un espai dinàmic i proper que genera a parts iguals un racó informatiu del succeït en clau musical a tot el nostre territori i també del que ha d'arribar.
-    L’espai té un format modern i atrevit que se serveix en càpsules i busca la concertació amb els agen...</p>
+    <p>Sèrie en clau de comèdia, que gira al voltant de reunions cada cop més habituals conegudes
+    com a "tupper sex", trobades a domicili per millorar la vida sexual de les persones que hi participen
+    . La intenció de Sex Toy Ficcions és aconseguir que l'espectador s'identifiqui amb les conductes i frustracions
+    sexuals dels protagonistes d'aquesta ficció...</p>
     <span class="chapters">
-    423 capítols
+    13 capítols
     </span>
     <dl>
     <dt>TV responsable</dt>
-    <dd>m1tv</dd>
+    <dd>La Xarxa</dd>
     <dt>Categoria</dt>
     <dd>
-    <a href="/programes?model_type=Program&amp;program%5Bprogram_categories%5D=Cultura">Cultura</a>
-    </dd>    
-    </dl>
-    </div>
-    </div>
-    </li>
+    <a href="/programes/page/10?model_type=Program&amp;program%5Bprogram_categories%5D=Nous+formats"
+    >Nous formats</a>
+
     '''
-    patron  = '<li>[^<]+'
-    patron += '<div class="item">[^<]+'
-    patron += '<div class="[^<]+'
-    patron += '<a href="([^"]+)"><img alt="[^"]+" src="([^"]+)".*?'
-    patron += '<div class="content">[^<]+'
-    patron += '<h4><a href="[^"]+">([^>]+)</a></h4>[^<]+'
-    patron += '<h5>[^<]+'
-    patron += '<a[^>]+>([^>]+)</a>[^<]+'
-    patron += '</h5>[^<]+'
-    patron += '<p>([^>]+)</p>'
+    patron  = '<li>[^<]+<div class="item">(.*?)</li>'
     matches = re.compile(patron,re.DOTALL).findall(data)
 
-    for scrapedurl,scrapedthumbnail,scrapedtitle,scrapedcategory,scrapedplot in matches:
+    for match in matches:
+        scrapedurl = scrapertools.find_single_match(match,'<a href="([^"]+)"')
+        scrapedthumbnail = scrapertools.find_single_match(match,'<img alt="[^"]+" src="([^"]+)"')
+        scrapedtitle = scrapertools.find_single_match(match,'<h4[^<]+<a href="[^"]+">([^<]+)</a>')
+        scrapedcategory = scrapertools.find_single_match(match,'<h5[^<]+<a href="[^"]+">([^<]+)</a>')
+        scrapedplot = scrapertools.find_single_match(match,'<p>(.*?)</p>')
+
         title = scrapertools.htmlclean(scrapedtitle)
         url = urlparse.urljoin(item.url,scrapedurl)
         thumbnail = urlparse.urljoin(item.url,scrapedthumbnail)
@@ -131,11 +135,17 @@ def programas(item):
         itemlist.append( Item(channel=CHANNELNAME, title=title , action="episodios" , url=url, page=url , thumbnail=thumbnail, fanart=thumbnail, plot=plot , show=title , category = "programas" , viewmode="movie_with_plot", folder=True) )
 
     # Página siguiente
-    patron = '<a href="([^"]+)">next</a>'
-    matches = re.compile(patron,re.DOTALL).findall(data)
-    
-    for match in matches:
-        itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente" , action="programas" , url=urlparse.urljoin(item.url,match), folder=True) )
+    next_page_url = scrapertools.find_single_match(data,'<a href="([^"]+)">next</a>')
+    if next_page_url!="":
+        next_page_url = urlparse.urljoin(item.url,next_page_url)
+        logger.info("next_page_url="+next_page_url)
+
+        next_page_item = Item(channel=CHANNELNAME, title=">> Página siguiente" , action="programas" , extra="pager", url=next_page_url, folder=True)
+
+        if load_all_pages:
+            itemlist.extend(programas(next_page_item,load_all_pages))
+        else:
+            itemlist.append(next_page_item)
 
     return itemlist
 
@@ -146,6 +156,11 @@ def episodios(item):
 
     # Descarga la página
     data = scrapertools.cache_page(item.url)
+
+    if item.url=="http://www.xiptv.cat/ben-trobats":
+        data = scrapertools.find_single_match(data,'(<li[^<]+<div class="item">.*?<div class="pager">.*?</div>)',1)
+    else:
+        data = scrapertools.find_single_match(data,'(<li[^<]+<div class="item">.*?<div class="pager">.*?</div>)')
     '''
     <li>
     <div class="item">
@@ -178,7 +193,7 @@ def episodios(item):
         scrapedthumbnail = scrapertools.find_single_match(match,'<img alt="[^"]+" src="([^"]+)"')
         scrapedplot = scrapertools.find_single_match(match,'<p>([^<]+)</p>').strip()
 
-        title = scrapertools.htmlclean(titulo_programa + " - " + titulo_episodio + " (" + fecha + ") (" + duracion + ")")
+        title = scrapertools.htmlclean(titulo_episodio) # + " (" + fecha + ") (" + duracion + ")")
         url = urlparse.urljoin( item.url , scrapedurl )
         thumbnail = urlparse.urljoin( item.url , scrapedthumbnail )
         plot = scrapertools.htmlclean(scrapedplot)
@@ -192,7 +207,42 @@ def episodios(item):
     matches = re.compile(patron,re.DOTALL).findall(data)
     
     for match in matches:
-        itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente" , action="episodios" , url=urlparse.urljoin(item.url,match), folder=True) )
+        itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente" , action="episodios" , extra="pager", url=urlparse.urljoin(item.url,match), show=item.show, folder=True) )
+
+    return itemlist
+
+def detalle_episodio(item):
+
+    data = scrapertools.cache_page(item.url)
+
+    scrapedplot = scrapertools.find_single_match(data,'<meta content="([^"]+)" property="og\:description"')
+    item.plot = scrapertools.htmlclean( scrapedplot ).strip()
+
+    scrapedthumbnail = scrapertools.find_single_match(data,'<meta content="([^"]+)" property="og\:image"')
+    item.thumbnail = scrapedthumbnail.strip()
+
+    scrapeddate = scrapertools.find_single_match(data,'<span class="date">([^<]+)</span>')
+    item.aired_date = scrapertools.parse_date( scrapeddate.strip() )
+
+    item.duration = scrapertools.find_single_match(data,'<span class="duration">([^<]+)</span>')
+
+    item.geolocked = "0"
+    
+    try:
+        from servers import xiptv as servermodule
+        video_urls = servermodule.get_video_url(item.url)
+        item.media_url = video_urls[0][1]
+    except:
+        import traceback
+        print traceback.format_exc()
+        item.media_url = ""
+
+    return item
+
+def play(item):
+
+    item.server="xiptv";
+    itemlist = [item]
 
     return itemlist
 

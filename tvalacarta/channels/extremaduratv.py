@@ -108,8 +108,113 @@ def archivo(item):
 
     return itemlist
 
+def detalle_programa(item):
+
+    data = scrapertools.cache_page(item.url)
+    url = scrapertools.find_single_match(data,'<a href="([^"]+)">Ficha del programa</a>')
+    data = scrapertools.cache_page(urlparse.urljoin(item.url,url))
+
+    item.plot = scrapertools.find_single_match(data,'<div class="descripcion-programa">(.*?)</div>')
+    item.plot = scrapertools.htmlclean(item.plot).strip()
+
+    item.thumbnail = scrapertools.find_single_match(data,'<div class="col-xs-8 col-right"[^<]+<img src="([^"]+)"')
+
+    return item
+
+def detalle_episodio(item):
+
+    data = scrapertools.cache_page(item.url)
+
+    scrapedplot = scrapertools.find_single_match(data,'<div class="descripcion">(.*?)</')
+
+    '''
+    http://iphonevod.canalextremadura.es/PROG00146680.mp4#550#300#/sites/default/files/vlcsnap-2015-09-18-13h10m49s47.png#true
+    '''
+    scrapedthumbnail = scrapertools.find_single_match(data,'data-iosUrl="([^"]+)">')
+
+    item.plot = scrapertools.htmlclean( scrapedplot ).strip()
+
+    try:
+        item.thumbnail = urlparse.urljoin(item.url,scrapedthumbnail.split("#")[3])
+    except:
+        import traceback
+        print traceback.format_exc()
+
+    item.geolocked = "0"
+    
+    try:
+        from servers import extremaduratv as servermodule
+        video_urls = servermodule.get_video_url(item.url)
+        item.media_url = video_urls[0][1]
+    except:
+        import traceback
+        print traceback.format_exc()
+        item.media_url = ""
+
+    return item
+
 def episodios(item):
     logger.info("extremaduratv.episodios")
+    itemlist = []
+
+    # Descarga la página
+    data = scrapertools.cachePage(item.url)
+
+    # Si hay algo en el contenedor izquierdo
+    titulo_bloque_izquierdo = scrapertools.find_single_match(data,'<div class="videos-izq"><h3>([^<]+)</h3>')
+    titulo_bloque_derecho = scrapertools.find_single_match(data,'<div class="videos-der"><h3>([^<]+)</h3>')
+
+    if titulo_bloque_izquierdo<>"" and titulo_bloque_derecho<>"":
+        itemlist.append( Item(channel=CHANNELNAME, title=titulo_bloque_izquierdo , action="episodios_bloque_izquierdo", url=item.url, show=item.show, extra="completos", folder=True) )
+        itemlist.append( Item(channel=CHANNELNAME, title=titulo_bloque_derecho , action="episodios_bloque_derecho", url=item.url, show=item.show, extra="fragmentos", folder=True) )
+    else:
+        if titulo_bloque_izquierdo<>"":
+            itemlist = episodios_bloque_izquierdo(item)
+        else:
+            itemlist = episodios_bloque_derecho(item)
+
+    return itemlist
+
+def episodios_bloque_izquierdo(item):
+    logger.info("extremaduratv.episodios_bloque_izquierdo")
+    itemlist = []
+
+    # Descarga la página
+    data = scrapertools.cachePage(item.url)
+    data = scrapertools.get_match(data,'<div class="contenedor-izq(.*?)<div class="contenedor-der')
+
+    patron  = '<li class="views-row[^<]+'
+    patron += '<div class="views-field views-field-title"[^<]+'
+    patron += '<span class="field-content"[^<]+'
+    patron += '<a href="([^"]+)">([^<]+)</a>'
+
+    matches = re.findall(patron,data,re.DOTALL)
+
+    for url,titulo in matches:
+        scrapedtitle = titulo.strip()
+        scrapedurl = urlparse.urljoin(item.url,url)
+        scrapedthumbnail = ""
+        scrapedplot = ""
+
+        # Trata de sacar la fecha de emisión del título
+        aired_date = scrapertools.parse_date(scrapedtitle)
+
+        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
+
+        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="extremaduratv" , url=scrapedurl, thumbnail = scrapedthumbnail, show=item.show, aired_date=aired_date, folder=False) )
+
+    #<li class="pager-next last"><a href="/alacarta/tv/programas/informativos/97/extremadura-noticias-1?page=1" 
+    patron = '<li class="pager-next[^<]+<a href="([^"]+)"'
+    matches = re.findall(patron,data,re.DOTALL)
+
+    for url in matches:
+        scrapedurl = urlparse.urljoin(item.url,url)
+        itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente" , action="episodios_bloque_izquierdo" , url=scrapedurl, show=item.show, extra=item.extra) )
+
+    return itemlist
+
+def episodios_bloque_derecho(item, load_all_pages=False):
+    logger.info("extremaduratv.episodios_bloque_derecho")
     itemlist = []
 
     # Descarga la página
@@ -135,17 +240,31 @@ def episodios(item):
         scrapedurl = urlparse.urljoin(item.url,url)
         scrapedthumbnail = thumbnail
         scrapedplot = ""
+
+        # Trata de sacar la fecha de emisión del título
+        aired_date = scrapertools.parse_date(scrapedtitle)
+
         if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
 
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="extremaduratv" , url=scrapedurl, thumbnail = scrapedthumbnail, show=item.show, folder=False) )
+        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="extremaduratv" , url=scrapedurl, thumbnail = scrapedthumbnail, show=item.show, aired_date=aired_date, folder=False) )
 
     #<li class="pager-next last"><a href="/alacarta/tv/programas/informativos/97/extremadura-noticias-1?page=1" 
-    patron = 'href="([^"]+)">siguiente'
-    matches = re.findall(patron,data,re.DOTALL)
+    next_page_url = scrapertools.find_single_match(data,'href="([^"]+)">siguiente')
+    if next_page_url!="":
+        next_page_url = urlparse.urljoin(item.url,next_page_url)
+        next_page_item = Item(channel=CHANNELNAME, title=">> Página siguiente" , action="episodios" , url=next_page_url, show=item.show, extra=item.extra)
 
-    for url in matches:
-        scrapedurl = urlparse.urljoin(item.url,url)
-        itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente" , action="episodios" , url=scrapedurl, show=item.show) )
+        if load_all_pages:
+            itemlist.extend(episodios(next_page_item,load_all_pages))
+        else:
+            itemlist.append( next_page_item )
+
+    return itemlist
+
+def play(item):
+
+    item.server="extremaduratv";
+    itemlist = [item]
 
     return itemlist
 

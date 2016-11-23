@@ -8,7 +8,7 @@
 # Desarrollo basado sobre otros canales de tvalacarta
 #------------------------------------------------------------
 
-import re, json
+import re, math, json
 
 from core import logger
 from core import scrapertools
@@ -28,12 +28,15 @@ def mainlist(item):
     logger.info("[" + CHANNELNAME + ".py] mainlist")
 
     itemlist = []
-    itemlist.append( Item(channel=CHANNELNAME, title="Series-Unitarios" , action="programas", url=MAIN_URL+"/series-unitarios/" , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Documentales"     , action="programas", url=MAIN_URL+"/documentales/"     , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Cortos"           , action="programas", url=MAIN_URL+"/cortos/"           , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Micros"           , action="programas", url=MAIN_URL+"/micros/"           , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Igualdad Cultural", action="programas", url=MAIN_URL+"/igualdad-cultural/", folder=True) )
-    #itemlist.append( Item(channel=CHANNELNAME, title="Clip CDA"         , action="calidades", url=MAIN_URL+"/clip/512/cda"      , folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="¿Qué es CDA?"     , action="calidades", url="3784", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Series"           , action="programas", url=MAIN_URL+"/serie/list/ajax/", extra="1", category="6" , folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Documentales"     , action="programas", url=MAIN_URL+"/serie/list/ajax/", extra="1", category="8" , folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Cortos"           , action="programas", url=MAIN_URL+"/clip/list/ajax/" , extra="1", category="7" , folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Micros"           , action="programas", url=MAIN_URL+"/serie/list/ajax/", extra="1", category="17", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Igualdad Cultural", action="programas", url=MAIN_URL+"/clip/list/ajax/" , extra="1", category="19", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Acua Federal"     , action="programas", url=MAIN_URL+"/serie/list/ajax/", extra="1", category="20", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Acua Mayor"       , action="programas", url=MAIN_URL+"/serie/list/ajax/", extra="1", category="21", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Enamorar"         , action="programas", url=MAIN_URL+"/serie/list/ajax/", extra="1", category="24", folder=True) )
 
     return itemlist
 
@@ -42,19 +45,19 @@ def programas(item):
     logger.info("[" + CHANNELNAME + ".py] programas")
     
     # Descargo la página de la sección.
-    data = scrapertools.cachePage(item.url)
+    url = item.url+"?category_id="+item.category+"&view=grid&page="+item.extra
+    data = scrapertools.cachePage(url)
     if (DEBUG): logger.info(data)
-
-    try:
-        pagina_siguiente = scrapertools.get_match(data, '<li>\s*<a class="btn arrow" href="(.*?)">»</a>\s*</li>')
-    except:
-        pagina_siguiente = ""
-    if (DEBUG): logger.info("pagina_siguiente=" + pagina_siguiente)
+    
+    programas = json.loads(data, object_hook=to_utf8)
+    
+    paginas = math.ceil(int(programas['total']) / 3)
 
     # Extraigo URL, imagen y título y descripción.
-    #patron  = '<article.*?>\s*<a.*?href="(.*?)".*?>\s*<img.*?src="(.*?)".*?/>.*?<h3.*?>(.*?)</h3>.*?<h3>Sinopsis</h3><.*?>(.*?)</.*?>'
     patron  = '<article.*?>\s*<a.*?href=".*?/(\w+)/(\d+)/.*?".*?>\s*<img.*?src="(.*?)".*?/>.*?<h3.*?>(.*?)</h3>'
-    matches = re.compile(patron, re.DOTALL).findall(data)
+    matches = re.compile(patron, re.DOTALL).findall(programas['html'])
+    
+    pagina_siguiente = int(item.extra) + int(math.floor(len(matches) / 3))
 
     itemlist = []
     for itype, iid, ithumbnail, ititle in matches:
@@ -68,8 +71,8 @@ def programas(item):
         itemlist.append( Item(channel=CHANNELNAME, title=scrapertools.htmlclean(ititle) , action=iaction, url=iid, thumbnail=ithumbnail, folder=True) )
 
     # Si existe una página siguiente entonces agrego un item de paginación.
-    if pagina_siguiente != "":
-        itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente", action="programas", url=MAIN_URL+pagina_siguiente, folder=True) )
+    if pagina_siguiente > int(item.extra):
+        itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente", action="programas", url=item.url, category=item.category, extra=str(pagina_siguiente), folder=True) )
 
     return itemlist
 
@@ -152,7 +155,7 @@ def calidades(item):
         if (DEBUG): logger.info("sPlaypath=" + sPlaypath)
 
         # Añado el item de la calidad al listado.
-        itemlist.append( Item(channel=CHANNELNAME, title=quality, action='play', url=sPlaypath, thumbnail=item.thumbnail, extra=item.title, folder=False ) )
+        itemlist.append( Item(channel=CHANNELNAME, title=quality, action='play', url=sPlaypath, category=item.title, thumbnail=item.thumbnail, extra=item.title, folder=False ) )
 
     return itemlist
 

@@ -16,6 +16,7 @@ from core.item import Item
 
 DEBUG = config.get_setting("debug")
 CHANNELNAME = "rtpa"
+PROGRAMAS_URL = "http://www.rtpa.es/json/vod_programas.json"
 
 def isGeneric():
     return True
@@ -26,7 +27,7 @@ def mainlist(item):
     itemlist = []
     itemlist.append( Item(channel=CHANNELNAME, title="Últimos vídeos añadidos" , url="http://www.rtpa.es/json/vod_parrilla_8.json" , action="novedades" , folder=True) )
     itemlist.append( Item(channel=CHANNELNAME, title="Programas actuales (con sinopsis)" , url="http://www.rtpa.es/json/programas_actuales_tpa.json" , action="programas_actuales" , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Todos los programas" , url="http://www.rtpa.es/json/vod_programas.json" , action="programas" , folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Todos los programas" , url=PROGRAMAS_URL , action="programas" , folder=True) )
 
     return itemlist
 
@@ -84,6 +85,9 @@ def programas(item):
 
     itemlist = []
 
+    if item.url=="":
+        item.url=PROGRAMAS_URL
+
     data = scrapertools.cache_page(item.url)
     json_object = jsontools.load_json(data)
     #logger.info("json_object="+repr(json_object))
@@ -101,9 +105,24 @@ def programas(item):
             url = "http://www.rtpa.es/api/muestra_json_vod.php?id_programa="+vod["id_programa"]
             thumbnail = urllib.quote(vod["url_imagen"]).replace("//","/").replace("http%3A/","http://")
             plot = ""
-            itemlist.append( Item(channel=CHANNELNAME, title=title , url=url,  thumbnail=thumbnail , plot=plot, action="episodios" , show = item.title , viewmode="movie", folder=True) )
+            # http://www.rtpa.es/programa:CONEXI%C3%B3N%20SALUDABLE_1372402706.html
+            page_url = "http://www.rtpa.es/tpa-programa-todos:"+urllib.quote(vod["nombre_programa"])+"_"+vod["id_programa"]+".html"
+            itemlist.append( Item(channel=CHANNELNAME, title=title , url=url, page=page_url, thumbnail=thumbnail , plot=plot, action="episodios" , show = title , viewmode="movie", folder=True) )
 
     return itemlist
+
+def detalle_programa(item):
+
+    data = scrapertools.cache_page(item.page)
+
+    item.plot = scrapertools.find_single_match(data,'<article class="span8"[^<]+<div class="contenido_noticia">(.*?)</div>')
+    item.plot = scrapertools.htmlclean(item.plot).strip()
+
+    item.thumbnail = scrapertools.find_single_match(data,'<img src="([^"]+)" alt="" class="img-det-not">')
+
+    #item.title = scrapertools.find_single_match(data,'<article class="span8"[^<]+<h2>([^<]+)</h2>')
+
+    return item
 
 def episodios(item):
     logger.info("tvalacarta.channels.rtpa episodios")
@@ -132,27 +151,61 @@ def episodios(item):
         except:
             thumbnail = ""
 
+        aired_date = scrapertools.parse_date( vod["fecha_emision"] )
+        
         plot = scrapertools.htmlclean(vod["sinopsis"])
-        itemlist.append( Item(channel=CHANNELNAME, title=title , url=url,  thumbnail=thumbnail , plot=plot, fanart=thumbnail, server="rtpa", action="play" , show = item.title , viewmode="movie_with_plot", folder=False) )
+        itemlist.append( Item(channel=CHANNELNAME, title=title , url=url,  thumbnail=thumbnail , plot=plot, fanart=thumbnail, server="rtpa", action="play" , show = item.show , viewmode="movie_with_plot", aired_date=aired_date, folder=False) )
 
     return itemlist
 
+def detalle_episodio(item):
+
+    item.geolocked = "0"
+    
+    try:
+        from servers import rtpa as servermodule
+        video_urls = servermodule.get_video_url(item.url)
+        item.media_url = video_urls[0][1]
+    except:
+        import traceback
+        print traceback.format_exc()
+        item.media_url = ""
+
+    return item
+
+def play(item):
+
+    item.server="rtpa";
+    itemlist = [item]
+
+    return itemlist
+
+# Test de canal
+# Devuelve: Funciona (True/False) y Motivo en caso de que no funcione (String)
 def test():
+    
+    # Carga el menu principal
+    items_mainlist = mainlist(Item())
 
-    # Al entrar sale una lista de categorias
-    categorias_items = mainlist(Item())
-    if len(categorias_items)==0:
-        print "No devuelve categorias"
-        return False
+    # Busca el item con la lista de programas
+    items_programas = []
+    for item_mainlist in items_mainlist:
 
-    programas_items = programas(categorias_items[-1])
-    if len(programas_items)==0:
-        print "No devuelve programas en "+categorias_items[0]
-        return False
+        if item_mainlist.action=="programas":
+            items_programas = programas(item_mainlist)
+            break
 
-    episodios_items = episodios(programas_items[0])
-    if len(episodios_items)==1:
-        print "No devuelve videos en "+programas_items[0].title
-        return False
+    if len(items_programas)==0:
+        return False,"No hay programas"
 
-    return True
+    # Carga los episodios
+    items_episodios = episodios(items_programas[0])
+    if len(items_episodios)==0:
+        return False,"No hay episodios en "+items_programas[0].title
+
+    # Lee la URL del vídeo
+    item_episodio = detalle_episodio(items_episodios[0])
+    if item_episodio.media_url=="":
+        return False,"El conector no devuelve enlace para el vídeo "+item_episodio.title
+
+    return True,""

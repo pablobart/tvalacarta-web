@@ -9,10 +9,11 @@ import urllib
 import os
 
 from core import logger
+from core import config
 from core import scrapertools
 from core.item import Item
 
-DEBUG = False
+DEBUG = config.get_setting("debug")
 CHANNELNAME = "adnstream"
 
 def isGeneric():
@@ -99,6 +100,13 @@ def videos(item):
     matches = re.compile(patron,re.DOTALL).findall(data)
     if len(matches)>0:
         itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente" , url=urlparse.urljoin(item.url,matches[0]), action="videos" , show = item.show , folder=True) )
+
+    return itemlist
+
+def play(item):
+
+    item.server="adnstream";
+    itemlist = [item]
 
     return itemlist
 

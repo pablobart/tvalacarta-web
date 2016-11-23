@@ -11,12 +11,12 @@ import urllib
 from core import logger
 from core import scrapertools
 from core.item import Item
+from core import jsontools
 
 logger.info("tvalacarta.channels.sieterm init")
 
-DEBUG = False
+DEBUG = True
 CHANNELNAME = "sieterm"
-MAIN_URL = "http://www.7rm.es/servlet/rtrm.servlets.ServletLink2?METHOD=LSTBLOGALACARTA&sit=c,6&serv=BlogPortal2&orden=2"
 
 def isGeneric():
     return True
@@ -24,18 +24,166 @@ def isGeneric():
 def mainlist(item):
     logger.info("tvalacarta.channels.sieterm mainlist")
 
-    itemlist = []
-    #itemlist.append( Item(channel=CHANNELNAME, title="Últimos vídeos añadidos" , url="" , action="novedades" , folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Todos los programas" , url=MAIN_URL , action="programas" , folder=True) )
+    return categorias(item)
 
+def categorias(item):
+    logger.info("tvalacarta.channels.sieterm categorias")
+
+    itemlist = []
+
+    data = scrapertools.cachePage("http://webtv.7tvregiondemurcia.es/")
+    data = scrapertools.find_single_match(data,'<ul class="nav center">(.*?)</ul>')
+    logger.info("tvalacarta.channels.sieterm data="+data)
+
+    patron  = '<a href="([^"]+)" title="[^"]+">([^<]+)<'
+    matches = re.compile(patron,re.DOTALL).findall(data)
+
+    for scrapedurl,scrapedtitle in matches:
+        title = scrapedtitle.strip()
+
+        if title=="Histórico":
+            url = "http://www.rtrm.es/servlet/rtrm.servlets.ServletLink2?METHOD=LSTBLOGALACARTA&serv=BlogPortal2&sit=c,6"
+            action = "programas_antiguos"
+        else:
+            url = urlparse.urljoin(item.url,scrapedurl)
+            action = "programas"
+        
+        thumbnail = ""
+        plot = ""
+        if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
+
+        # Añade al listado de XBMC
+        itemlist.append( Item(channel=CHANNELNAME, title=title , action=action , url=url, thumbnail=thumbnail, category=title, plot=plot, view="programs" ) )
+    
     return itemlist
 
-def programas(item):
+def programas(item, load_all_pages=False):
     logger.info("tvalacarta.channels.sieterm programas")
 
     itemlist = []
-    if item.url=="":
-        item.url = MAIN_URL
+
+    data = scrapertools.cachePage(item.url)
+
+    '''
+    <div class="col-xs-12 col-sm-6 col-md-6 col-lg-4 coleccion">
+    <a href="/entretenimiento/gente-como-tu/2016/viernes-19-de-febrero/" title="Gente como tú">
+    <div class="row">
+    <div class="col-xs-6 coleccion-image">
+    <img src="http://statics.7tvregiondemurcia.es/uploads/2015/05/gentecomotu-320x180.jpg" class="img-responsive">
+    </div>
+    <div class="col-xs-6 coleccion-texto">
+    <h3>Gente como tú</h3>
+    <p>El magazine de las tardes de 7 TV se llama Gente como tú y lo presenta Antonio Hidalgo. Historias...</p>
+    </div>
+    '''
+
+    patron  = '<div[^<]+'
+    patron += '<a href="([^"]+)" title="([^"]+)"[^<]+'
+    patron += '<div class="row"[^<]+'
+    patron += '<div class="col-xs-6 coleccion-image"[^<]+'
+    patron += '<img src="([^"]+)"[^<]+'
+    patron += '</div[^<]+'
+    patron += '<div class="col-xs-6 coleccion-texto"[^<]+'
+    patron += '<h3[^<]+</h3>(.*?)</div>'
+    matches = re.compile(patron,re.DOTALL).findall(data)
+
+    for scrapedurl, scrapedtitle, scrapedthumbnail, scrapedplot in matches:
+
+        title = scrapedtitle
+        plot = scrapertools.htmlclean(scrapedplot).strip()
+        thumbnail = urlparse.urljoin(item.url,scrapedthumbnail)
+        url = urlparse.urljoin(item.url,scrapedurl)
+        fanart = thumbnail
+        page = url
+
+        # Añade al listado de XBMC
+        itemlist.append( Item(channel=CHANNELNAME, title=title , action="temporadas" , url=url, thumbnail=thumbnail, fanart=fanart, category=item.category, plot=plot, show=title, page=page ) )
+    
+    next_page_url = scrapertools.find_single_match(data,'<li><a href="([^"]+)">SIGUIENTE</a><li>')
+    if next_page_url!="":
+        next_page_url = urlparse.urljoin(item.url,next_page_url)
+        next_page_item = Item(channel=CHANNELNAME, title=">> Página siguiente" , action="programas" , url=next_page_url, category=item.category, view="programs")
+
+        if load_all_pages:
+            itemlist.extend(programas(next_page_item,load_all_pages))
+        else:
+            itemlist.append( next_page_item )
+
+    return itemlist
+
+def temporadas(item, load_all_pages=False):
+    logger.info("tvalacarta.channels.sieterm temporadas")
+
+    itemlist = []
+
+    data = scrapertools.cachePage(item.url)
+    patron = '"ID"\:"(\d+)","post_title"\:"([^"]+)"'
+    matches = re.compile(patron,re.DOTALL).findall(data)
+
+    for temporada_id,temporada_title in matches:
+
+        title = "Temporada "+temporada_title
+        plot = ""
+        thumbnail = item.thumbnail
+        url = "http://webtv.7tvregiondemurcia.es/temporadasbrowser/getCapitulos/"+temporada_id+"/1/1/"
+        fanart = thumbnail
+
+        # Añade al listado de XBMC
+        temporadaitem = Item(channel=CHANNELNAME, title=title , action="videos" , url=url, thumbnail=thumbnail, fanart=fanart, plot=plot, category=item.category, show=item.show, view="videos" )
+        #itemlist.extend( videos(temporadaitem,load_all_pages) )
+        itemlist.append(temporadaitem)
+    
+    return itemlist
+
+def videos(item, load_all_pages=False):
+    logger.info("tvalacarta.channels.sieterm videos")
+
+    itemlist = []
+
+    json_body = scrapertools.cachePage(item.url)
+    json_object = jsontools.load_json(json_body)
+    logger.info("tvalacarta.channels.sieterm json_object="+repr(json_object))
+
+    for entry in json_object["episodes"]:
+        logger.info("tvalacarta.channels.sieterm entry="+repr(entry))
+
+        title = entry["post_title"]
+        plot = entry["post_content"]
+        thumbnail = entry["image"]
+        url = urlparse.urljoin( item.url , entry["url"] )
+        fanart = thumbnail
+
+        # Trata de sacar la fecha de emisión del título
+        aired_date = entry["post_date"][0:10]
+
+        # Añade al listado de XBMC
+        itemlist.append( Item(channel=CHANNELNAME, title=title , action="play", server="sieterm" , url=url, thumbnail=thumbnail, fanart=fanart, plot=plot, show=item.show, aired_date=aired_date, viewmode="movie_with_plot", folder=False ) )
+    
+    if json_object["hasNext"]:
+
+        # Extrae la página de la URL
+        trozos = item.url.split("/")
+        current_page = trozos[-2]
+
+        # La aumenta
+        next_page = int(current_page)+1
+        trozos[-2] = str(next_page)
+
+        # Y recompone la URL
+        next_page_url = "/".join(trozos)
+        next_page_item = Item(channel=CHANNELNAME, title=">> Página siguiente" , action="videos" , url=next_page_url, thumbnail=thumbnail, fanart=fanart, show=item.show, view="videos" )
+
+        if load_all_pages:
+            itemlist.extend(videos(next_page_item, load_all_pages))
+        else:
+            itemlist.append( next_page_item )
+
+    return itemlist
+
+def programas_antiguos(item, load_all_pages=False):
+    logger.info("tvalacarta.channels.sieterm programas_antiguos load_all_pages=="+repr(load_all_pages))
+
+    itemlist = []
 
     data = scrapertools.cachePage(item.url)
     
@@ -59,17 +207,22 @@ def programas(item):
         if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
 
         # Añade al listado de XBMC
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="episodios" , url=scrapedurl, thumbnail=scrapedthumbnail, fanart=scrapedthumbnail, plot=scrapedplot , show=scrapedtitle , viewmode="movie_with_plot", folder=True ) )
+        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="episodios" , url=scrapedurl, thumbnail=scrapedthumbnail, fanart=scrapedthumbnail, plot=scrapedplot , show=scrapedtitle , view="videos" ) )
 
     # Busca la página siguiente
-    pagina_siguiente = scrapertools.find_single_match(data,'<a class="list-siguientes" href="([^"]+)" title="Ver siguientes a la cartas">Siguiente</a>')
-    if pagina_siguiente!="":
-        pagina_siguiente = urlparse.urljoin(item.url,pagina_siguiente)
-        itemlist.append( Item(channel=CHANNELNAME, title=">> Página siguiente" , action="programas" , url=pagina_siguiente , folder=True) )
+    next_page_url = scrapertools.find_single_match(data,'<a class="list-siguientes" href="([^"]+)" title="Ver siguientes a la cartas">Siguiente</a>')
+    if next_page_url!="":
+        next_page_url = urlparse.urljoin(item.url,next_page_url)
+        next_page_item = Item(channel=CHANNELNAME, title=">> Página siguiente" , action="programas_antiguos" , url=next_page_url , folder=True)
+
+        if load_all_pages:
+            itemlist.extend(programas_antiguos(next_page_item,load_all_pages=True))
+        else:
+            itemlist.append( next_page_item )
 
     return itemlist
 
-def episodios(item):
+def episodios(item, load_all_pages=False):
     logger.info("tvalacarta.channels.sieterm episodios")
 
     # Descarga la página
@@ -117,39 +270,105 @@ def episodios(item):
         scrapedthumbnail = urlparse.urljoin(item.url,match[3]).replace("&amp;","&")
         scrapedplot = unicode( match[4].strip()  , "iso-8859-1" , errors="ignore").encode("utf-8")
         scrapedpage = urlparse.urljoin(item.url,match[0]).replace("&amp;","&")
-        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
+        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], page=["+scrapedpage+"], thumbnail=["+scrapedthumbnail+"]")
+
+        # Trata de sacar la fecha de emisión del título
+        aired_date = scrapertools.parse_date(scrapedtitle)
+        #logger.info("aired_date="+aired_date)
 
         # Añade al listado de XBMC
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="directo" , url=scrapedurl, thumbnail=scrapedthumbnail, fanart=scrapedthumbnail, plot=scrapedplot , show = item.show , page=scrapedpage, viewmode="movie_with_plot", folder=False) )
+        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="play" , server="sieterm" , url=scrapedpage, thumbnail=scrapedthumbnail, fanart=scrapedthumbnail, plot=scrapedplot , show = item.show , page=scrapedpage, aired_date=aired_date, folder=False) )
 
-    patron = '<a class="list-siguientes" href="([^"]+)" title="Ver siguientes archivos">'
-    matches = re.compile(patron,re.DOTALL).findall(data)
-    for match in matches:
-        # Atributos del vídeo
-        scrapedtitle = ">> Página siguiente"
-        scrapedurl = urlparse.urljoin(item.url,match)
-        scrapedthumbnail = ""
-        scrapedplot = ""
-        if (DEBUG): logger.info("title=["+scrapedtitle+"], url=["+scrapedurl+"], thumbnail=["+scrapedthumbnail+"]")
+    # Busca la página siguiente
+    next_page_url = scrapertools.find_single_match(data,'<a class="list-siguientes" href="([^"]+)" title="Ver siguientes archivos">')
+    if next_page_url!="":
+        next_page_url = urlparse.urljoin(item.url,next_page_url)
+        next_page_item = Item(channel=CHANNELNAME, title=">> Página siguiente" , action="episodios" , url=next_page_url , show=item.show, folder=True)
 
-        # Añade al listado de XBMC
-        itemlist.append( Item(channel=CHANNELNAME, title=scrapedtitle , action="episodios" , url=scrapedurl, thumbnail=scrapedthumbnail, plot=scrapedplot , show = item.show , folder=True) )
+        if load_all_pages:
+            itemlist.extend(episodios(next_page_item,load_all_pages))
+        else:
+            itemlist.append( next_page_item )
 
     return itemlist
 
-# Verificación automática de canales: Esta función debe devolver "True" si todo está ok en el canal.
+def detalle_episodio(item):
+
+    #data = scrapertools.cache_page(item.url)
+
+    item.geolocked = "0"
+
+    try:
+        from servers import sieterm as servermodule
+        video_urls = servermodule.get_video_url(item.url)
+        item.media_url = video_urls[0][1]
+    except:
+        import traceback
+        print traceback.format_exc()
+        item.media_url = ""
+
+    return item
+
+def play(item):
+
+    item.server="sieterm";
+    itemlist = [item]
+
+    return itemlist
+
+# Test de canal
+# Devuelve: Funciona (True/False) y Motivo en caso de que no funcione (String)
 def test():
-    bien = True
     
-    menuitem = mainlist(Item())[0]
-    # El canal tiene estructura programas -> episodios -> play
-    programas_itemlist = programas(menuitem)
-    if len(programas_itemlist)==0:
-        return False
+    # Carga el menu principal
+    items_mainlist = mainlist(Item())
 
-    print "Episodios de "+programas_itemlist[1].tostring()
-    episodios_itemlist = episodios(programas_itemlist[1])
-    if len(episodios_itemlist)==0:
-        return False
+    # Busca un item con la lista de programas
+    items_programas = []
+    for item_mainlist in items_mainlist:
 
-    return bien
+        if item_mainlist.action=="programas_antiguos":
+            items_programas = programas_antiguos(item_mainlist)
+            break
+
+    if len(items_programas)==0:
+        return False,"No hay programas antiguos"
+
+    # Carga los episodios
+    items_episodios = episodios(items_programas[0])
+    if len(items_episodios)==0:
+        return False,"No hay episodios en programa antiguo "+items_programas[0].title
+
+    # Lee la URL del vídeo
+    item_episodio = detalle_episodio(items_episodios[0])
+    if item_episodio.media_url=="":
+        return False,"El conector no devuelve enlace para el vídeo "+item_episodio.title
+
+
+    # Busca un item con la lista de programas
+    items_programas = []
+    for item_mainlist in items_mainlist:
+
+        if item_mainlist.action=="programas":
+            items_programas = programas(item_mainlist)
+            break
+
+    if len(items_programas)==0:
+        return False,"No hay programas nuevos"
+
+    # Carga las temporadas
+    items_temporadas = temporadas(items_programas[0])
+    if len(items_temporadas)==0:
+        return False,"No hay temporadas en programa nuevo "+items_programas[0].title
+    
+    # Carga los episodios
+    items_episodios = videos(items_temporadas[0])
+    if len(items_episodios)==0:
+        return False,"No hay episodios en temporada "+items_temporadas[0].title+" de programa nuevo "+items_programas[0].title
+
+    # Lee la URL del vídeo
+    item_episodio = detalle_episodio(items_episodios[0])
+    if item_episodio.media_url=="":
+        return False,"El conector no devuelve enlace para el vídeo "+item_episodio.title
+
+    return True,""

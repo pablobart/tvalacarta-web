@@ -12,7 +12,7 @@ from core import config
 from core import scrapertools
 from core.item import Item
 
-DEBUG = False
+DEBUG = True
 CHANNELNAME = "tvn"
 
 def isGeneric():
@@ -22,11 +22,10 @@ def mainlist(item):
     logger.info("tvalacarta.channels.tvn mainlist")
 
     itemlist = []
-    itemlist.append( Item(channel=CHANNELNAME, title="Teleseries" , action="programas" , url="http://www.tvn.cl/player/", extra="teleseries", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Entretención" , action="programas" , url="http://www.tvn.cl/player/", extra="entretencion", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Series" , action="programas" , url="http://www.tvn.cl/player/", extra="series", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Docurrealidad" , action="programas" , url="http://www.tvn.cl/player/", extra="docurrealidad", folder=True) )
-    itemlist.append( Item(channel=CHANNELNAME, title="Cultura" , action="programas" , url="http://www.tvn.cl/player/", extra="cultura", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Programas"  , action="programas" , url="http://www.tvn.cl/programas", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Teleseries" , action="programas" , url="http://www.tvn.cl/teleseries", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Cultura"    , action="programas" , url="http://www.tvn.cl/cultura", folder=True) )
+    itemlist.append( Item(channel=CHANNELNAME, title="Especiales" , action="programas" , url="http://www.tvn.cl/especiales", folder=True) )
 
     return itemlist
 
@@ -34,62 +33,108 @@ def programas(item):
     logger.info("tvalacarta.channels.tvn programas")
     itemlist = []
 
-    #http://www.tvn.cl/cultura/menuportadaplayer/?service=blank
+    data = scrapertools.cache_page(item.url)
+    patron = '<ul class="nav_videos_destacados">(.*?)</ul>'
+    bloques = re.compile(patron,re.DOTALL).findall(data)
+    if DEBUG: scrapertools.printMatches(bloques)
 
-    # Extrae las series
-    data = scrapertools.cachePage("http://www.tvn.cl/"+item.extra+"/menuportadaplayer/?service=blank")
-    logger.info("data="+data.strip())
+    for bloque in bloques:
 
-    patron  = '<li><a href="([^"]+)">([^<]+)<'
-    matches = re.compile(patron,re.DOTALL).findall(data)
-    if DEBUG: scrapertools.printMatches(matches)
-    
-    for scrapedurl,scrapedtitle in matches:
-        title = scrapedtitle.strip()
-        thumbnail = ""
-        plot = ""
-        url = urlparse.urljoin(item.url,scrapedurl)
-        if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
-        itemlist.append( Item( channel=item.channel , title=title , action="episodios" , url=url , thumbnail=thumbnail , plot=plot , show=title , fanart=thumbnail , folder=True ) )
+        '''
+        <li id='comcont11808009_1'>
+        <a href="http://www.tvn.cl/programas/kunga/" >
+        <img alt="Kunga" src="http://www.tvn.cl/incoming/afiche-kungapng-1852994/ALTERNATES/w620h450/Afiche-Kunga.png" />
+        <div class="nav_videos_destacados_txt">
+        <span>Sábado 22:30 horas</span>
+        <h3>Kunga</h3>
+        <p>Actitud Animal</p>
+        '''
+        '''
+        <li id='comcont11807952_6'>
+        <a href="http://www.tvn.cl/programas/mientrastanto/" >
+        <img alt="Mientras Tanto" src="http://www.tvn.cl/incoming/afiche-mientrastantopng-1853001/ALTERNATES/w620h450/Afiche-MientrasTanto.png" />
+        <div class="nav_videos_destacados_txt">
+        <span></span>
+        <h3>Mientras Tanto</h3>
+        <p>#MientrasTantoTVN</p>
+        </div>
+        </a>
+        </li>
+        '''
+
+        patron  = '<li[^<]+'
+        patron += '<a href="([^"]+)"[^<]+'
+        patron += '<img alt="[^"]+" src="([^"]+)"[^<]+'
+        patron += '<div class="nav_videos_destacados_txt"[^<]+'
+        patron += '<span>[^<]*</span[^<]+'
+        patron += '<h3>([^<]+)</h3[^<]+'
+        patron += '<p>([^<]*)</p>'
+        matches = re.compile(patron,re.DOTALL).findall(bloque)
+        if DEBUG: scrapertools.printMatches(matches)
+
+        for scrapedurl,scrapedthumbnail,scrapedtitle,scrapedplot in matches:
+            title = scrapedtitle.strip()
+            thumbnail = urlparse.urljoin(item.url,scrapedthumbnail)
+            plot = scrapedplot
+            url = urlparse.urljoin(item.url,scrapedurl)
+            if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
+            itemlist.append( Item( channel=item.channel , title=title , action="episodios" , url=url , thumbnail=thumbnail , plot=plot , show=title , fanart=thumbnail , folder=True ) )
 
     return itemlist
 
 def episodios(item):
     logger.info("tvalacarta.channels.tvn episodios")
-    itemlist=[]
+    
+    itemlist=parse_episodios(item,item.url)
+    itemlist.extend( parse_episodios( item,urlparse.urljoin(item.url,"capitulos") ) )
 
+    return itemlist
+
+def parse_episodios(item,url):
+    logger.info("tvalacarta.channels.tvn parse_episodios")
+
+    itemlist = []
+    data = scrapertools.cache_page(url)
     '''
-    <article class="ventana3 efecto-hover">
-    <img src="http://www.tvn.cl/incoming/article566557.ece/ALTERNATES/w300/cumbres_170313.jpg" alt="Lhasa la ciudad prohibida"/>
-    <a href="/player/play/?id=566567&s=8959">
-    <div class="mask">
-    <h5><span></span>Cumbres del Mundo</h5>
-    <h3>Capítulo 11</h3>
-    <h2>Lhasa la ciudad prohibida</h2>
-    </div>
+    <figure id='comcont11979605_3'>
+    <a href="http://www.tvn.cl/programas/oncecomida/capitulos/capitulo-17-once-comida-2018064" >
+    <img class="img-responsive" alt="¡¿Quién espera la guagua?!" src="http://www.tvn.cl/incoming/once_comida_guaguajpg-2018072/ALTERNATES/w620h450/Once_Comida_Guagua.jpg" />
     </a>
-    </article>
+    <div class="typeContent">
+    <p><i class="fa fa-play-circle-o"></i></p>
+    </div>
+    <figcaption>
+    <a href="http://www.tvn.cl/programas/oncecomida/capitulos/capitulo-17-once-comida-2018064" >
+    <span>Capítulo 20 - Martes 17 de mayo</span>
+    <h2>¡¿Quién espera la guagua?!</h2>
+    <p>Una gran confusión invadió a la familia Iglesias. Mateo cree que Daniela está embarazada, Rodolfo c...</p>
+    </a>
+    </figcaption>
+    </figure>
     '''
-
-    # Extrae los episodios
-    data = scrapertools.cachePage(item.url)
-    patron  = '<article class="ventana3 efecto-hover"[^<]+'
-    patron += '<img src="([^"]+)"[^<]+'
+    patron  = '<figure id=[^<]+'
     patron += '<a href="([^"]+)"[^<]+'
-    patron += '<div class="mask"[^<]+'
-    patron += '<h5><span></span>([^<]+)</h5[^<]+'
-    patron += '<h3>([^<]+)</h3[^<]+'
-    patron += '<h2>([^<]+)</h2>'
+    patron += '<img class="img-responsive" alt="[^"]+" src="([^"]+)"[^<]+'
+    patron += '</a[^<]+'
+    patron += '<div class="typeContent"[^<]+'
+    patron += '<p><i[^<]+</i></p[^<]+'
+    patron += '</div[^<]+'
+    patron += '<figcaptio[^<]+'
+    patron += '<a[^<]+'
+    patron += '<span>([^<]+)</span[^<]+'
+    patron += '<h2>([^<]+)</h2[^<]+'
+    patron += '<p>([^<]+)</p>'
+
     matches = re.compile(patron,re.DOTALL).findall(data)
     if DEBUG: scrapertools.printMatches(matches)
 
-    for scrapedthumbnail,scrapedurl,scrapedshow,scrapedepisode,scrapedtitle in matches:
-        title = scrapedepisode.strip()+" - "+scrapedtitle.strip()
+    for scrapedurl,scrapedthumbnail,scrapedtitle,scrapedtitle2,scrapedplot in matches:
+        title = scrapedtitle.strip()+" - "+scrapedtitle2.strip()
         thumbnail = urlparse.urljoin(item.url,scrapedthumbnail)
-        plot = ""
+        plot = scrapedplot
         url = urlparse.urljoin(item.url,scrapedurl)
         if (DEBUG): logger.info("title=["+title+"], url=["+url+"], thumbnail=["+thumbnail+"]")
-        itemlist.append( Item( channel=item.channel , title=title , action="play" , server="tvn" , url=url , thumbnail=thumbnail , plot=plot , show=title , fanart=thumbnail , folder=False ) )
+        itemlist.append( Item( channel=item.channel , title=title , action="play" , server="tvn", url=url , thumbnail=thumbnail , plot=plot , show=title , fanart=thumbnail , folder=False ) )
 
     return itemlist
 
